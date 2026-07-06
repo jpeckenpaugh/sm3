@@ -1,0 +1,15 @@
+{
+    "phases": ["PLAN", "WRITE", "REVIEW", "COMMIT", "GATE"],
+    "max_iterations": 3,
+    "max_retries": 2,
+    "backlog_file": "backlog.txt",
+    "signal_file": "vasuki.signal",
+    "phase_scripts": {
+        "PLAN":   "scripts/phase_plan.sh",
+        "WRITE":  "scripts/phase_write.sh",
+        "REVIEW": "scripts/phase_review.sh",
+        "COMMIT": "scripts/phase_commit.sh",
+        "GATE":   "scripts/phase_gate.sh"
+    },
+    "ship_command": "touch vasuki.signal && echo SHIPPED"
+}

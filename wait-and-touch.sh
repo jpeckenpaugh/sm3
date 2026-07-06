@@ -1,13 +1,35 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# wait-and-touch.sh — Mock agent for Matsya state machine verification.
+# Waits for a trigger file, then touches a completion signal.
+#
+# Usage: wait-and-touch.sh <watch_file> <touch_file>
+#   watch_file  — file to poll for existence
+#   touch_file  — file to create when watch_file appears
+#
+# Phase agent protocol (called by state_machine.py):
+#   wait-and-touch.sh <phase_name> <iteration>
+#   Watches for backlog.txt, then touches a per-iteration signal.
 
-if [ $# -ne 3 ]; then
-  echo "Usage: $0 <seconds> <probability> <file>" >&2
-  exit 1
+WATCH_FILE="${1:-backlog.txt}"
+TOUCH_FILE="${2:-signal.touch}"
+POLL_SECS="${POLL_SECS:-1}"
+
+if [ "$#" -ge 1 ] && [ "$1" != "${1#/}" ]; then
+    # Called by state machine: args are phase name and iteration
+    PHASE="$1"
+    ITER="$2"
+    WATCH_FILE="backlog.txt"
+    TOUCH_FILE="signals/${PHASE}_${ITER}.done"
+    mkdir -p signals
 fi
 
-sleep "$1"
+echo "wait-and-touch.sh: watching for '$WATCH_FILE' → touch '$TOUCH_FILE'"
 
-if awk -v r=$RANDOM -v p=$2 'BEGIN { exit (r >= p * 32768) }'; then
-  touch "$3"
-fi
+while true; do
+    if [ -f "$WATCH_FILE" ]; then
+        touch "$TOUCH_FILE"
+        echo "  ✓ Detected '$WATCH_FILE', touched '$TOUCH_FILE'"
+        exit 0
+    fi
+    sleep "$POLL_SECS"
+done
