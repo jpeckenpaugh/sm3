@@ -1,6 +1,6 @@
 {
     "phases": ["PLAN", "WRITE", "REVIEW", "COMMIT", "GATE"],
-    "max_iterations": 3,
+    "max_iterations": 2,
     "max_retries": 2,
     "backlog_file": "backlog.txt",
     "signal_file": "vasuki.signal",
@@ -11,5 +11,5 @@
         "COMMIT": "scripts/phase_commit.sh",
         "GATE":   "scripts/phase_gate.sh"
     },
-    "ship_command": "touch vasuki.signal && echo SHIPPED"
+    "ship_command": "touch vasuki.signal && echo '📦 SHIPPED'"
 }

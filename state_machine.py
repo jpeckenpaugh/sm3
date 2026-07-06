@@ -49,6 +49,11 @@ def load_config(path=None):
         with open(path) as f:
             user = json.load(f)
         cfg.update(user)
+    # Allow env var override for backlog/signal paths
+    if os.environ.get("MATSYA_BACKLOG"):
+        cfg["backlog_file"] = os.environ["MATSYA_BACKLOG"]
+    if os.environ.get("MATSYA_SIGNAL"):
+        cfg["signal_file"] = os.environ["MATSYA_SIGNAL"]
     return cfg
 
 
@@ -169,10 +174,7 @@ def main():
                     print(f"\n  ✗ Iteration {iteration} failed at phase {phase}.")
                     sys.exit(1)
 
-        else:
-            # Only reached if for-loop completed without break (i.e. GATE not hit)
-            # This happens when there are no phases (shouldn't occur)
-            pass
+        # else: for-loop completed without break (skip — GATE always breaks or returns)
 
         iteration += 1
 
