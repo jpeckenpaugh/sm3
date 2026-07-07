@@ -112,7 +112,7 @@ check_output_contains "6 profiles seeded" "→ 6 profiles loaded" $SEED --db "$T
 check_output_contains "13 components seeded" "→ 13 components loaded" $SEED --db "$TEST_DB"
 
 # 1.5 Profile-component links count
-check_output_contains "12 profile-component links" "→ 12 profile-component links loaded" $SEED --db "$TEST_DB"
+check_output_contains "14 profile-component links" "→ 14 profile-component links loaded" $SEED --db "$TEST_DB"
 
 pass "ft001: Seed & Component Decomposition complete"
 
