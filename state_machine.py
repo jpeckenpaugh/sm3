@@ -82,11 +82,20 @@ def run_script(script_path, phase_name, iteration):
     return ok
 
 
-def has_backlog(backlog_file):
-    """Return True if the backlog file exists and is non-empty."""
-    if not os.path.exists(backlog_file):
+def has_backlog(backlog_path):
+    """Return True if the backlog exists and has items.
+
+    Handles both directories (counts .md files) and plain text files.
+    """
+    if not os.path.exists(backlog_path):
         return False
-    with open(backlog_file) as f:
+    if os.path.isdir(backlog_path):
+        # Count files in the directory
+        for entry in os.scandir(backlog_path):
+            return True  # at least one entry exists
+        return False
+    # Plain text file
+    with open(backlog_path) as f:
         return bool(f.read().strip())
 
 
@@ -265,6 +274,14 @@ def run_with_config(cfg):
         if log_conn and sprint_id:
             complete_sprint(log_conn, sprint_id, status="completed")
 
+    except KeyboardInterrupt:
+        print("\n  ⌨️ User canceled with Ctrl-C")
+        if log_conn and sprint_id:
+            try:
+                complete_sprint(log_conn, sprint_id, status="aborted")
+            except Exception:
+                pass
+        sys.exit(130)
     finally:
         if log_conn:
             log_conn.close()

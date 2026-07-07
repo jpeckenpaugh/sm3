@@ -21,6 +21,14 @@ import sqlite3
 import sys
 from pathlib import Path
 
+# UTC-aware helper for Python 3.8+ (avoids deprecated utcnow())
+_UTC = datetime.timezone.utc
+
+
+def _now_utc():
+    """Return current UTC timestamp as ISO 8601 string."""
+    return datetime.datetime.now(_UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
+
 
 # ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -228,7 +236,7 @@ def cmd_run(args):
             sys.exit(1)
         cursor.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM sprints")
         next_num = cursor.fetchone()[0]
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+        now = _now_utc()
         cursor.execute(
             """INSERT INTO sprints (number, mode, status, started_at, notes)
                VALUES (?, 'driven', 'active', ?, ?)""",
@@ -687,7 +695,7 @@ def cmd_sprint(args):
             print("No sprints table found. Run 'sm seed' to update the database schema.")
             sys.exit(1)
 
-        now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+        now = _now_utc()
 
         if args.sprint_action == "start":
             # Check for duplicate
@@ -757,6 +765,80 @@ def cmd_sprint(args):
 
 # ─── Command: init ───────────────────────────────────────────────────────────
 
+def _create_boilerplate(project_root):
+    """Create default phase scripts and config.json for a new project."""
+    scripts_dir = os.path.join(project_root, "scripts")
+
+    scripts = {
+        "phase_plan.sh": """#!/usr/bin/env bash
+# PLAN phase — describe what will be built
+echo "PLAN: iteration $2 — planning..."
+sleep 5
+echo "PLAN: complete"
+""",
+        "phase_write.sh": """#!/usr/bin/env bash
+# WRITE phase — produce artifacts
+echo "WRITE: iteration $2 — writing..."
+sleep 5
+echo "WRITE: complete"
+""",
+        "phase_review.sh": """#!/usr/bin/env bash
+# REVIEW phase — verify artifacts exist
+echo "REVIEW: iteration $2 — reviewing..."
+sleep 5
+echo "REVIEW: complete"
+""",
+        "phase_commit.sh": """#!/usr/bin/env bash
+# COMMIT phase — snapshot
+echo "COMMIT: iteration $2 — committing..."
+sleep 5
+echo "COMMIT: complete"
+""",
+        "phase_gate.sh": """#!/usr/bin/env bash
+# GATE phase — check backlog, decide next
+echo "GATE: iteration $2 — checking backlog..."
+sleep 3
+BACKLOG_DIR="backlog"
+if [ -d "$BACKLOG_DIR" ] && [ "$(ls -A "$BACKLOG_DIR" 2>/dev/null)" ]; then
+    echo "GATE: backlog non-empty — continuing"
+else
+    echo "GATE: backlog empty — shipping"
+fi
+""",
+    }
+
+    for filename, content in scripts.items():
+        path = os.path.join(scripts_dir, filename)
+        if not os.path.isfile(path):
+            with open(path, "w") as f:
+                f.write(content.lstrip("\n"))
+            os.chmod(path, 0o755)
+            print(f"  Script: {filename}")
+
+    # config.json
+    config_path = os.path.join(project_root, "config.json")
+    if not os.path.isfile(config_path):
+        config = {
+            "phases": ["PLAN", "WRITE", "REVIEW", "COMMIT", "GATE"],
+            "max_iterations": 3,
+            "max_retries": 2,
+            "phase_scripts": {
+                "PLAN":   "scripts/phase_plan.sh",
+                "WRITE":  "scripts/phase_write.sh",
+                "REVIEW": "scripts/phase_review.sh",
+                "COMMIT": "scripts/phase_commit.sh",
+                "GATE":   "scripts/phase_gate.sh",
+            },
+            "backlog_file": "backlog",
+            "signal_file": "vasuki.signal",
+            "ship_command": "echo SHIPPED",
+        }
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=2)
+            f.write("\n")
+        print(f"  Config: config.json")
+
+
 def cmd_init(args):
     """Bootstrap a new project directory with database, schema, seeds, and registry."""
     db_path = os.path.abspath(args.db_path)
@@ -765,8 +847,11 @@ def cmd_init(args):
 
     # 1. Create directory structure
     os.makedirs(project_root, exist_ok=True)
-    for subdir in ["backlog", "sprint", ".opencode/agents"]:
+    for subdir in ["backlog", "sprint", ".opencode/agents", "scripts"]:
         os.makedirs(os.path.join(project_root, subdir), exist_ok=True)
+
+    # 1.5. Create boilerplate phase scripts and config
+    _create_boilerplate(project_root)
 
     # 2. Detect existing sprint work (adoption prompt)
     sprint_01_dir = os.path.join(project_root, "sprint", "01")
@@ -875,7 +960,7 @@ permission:
         conn4 = sqlite3.connect(db_path)
         try:
             cursor = conn4.cursor()
-            now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            now = _now_utc()
             notes = "Sprint 01 built by hand. 7 features, 54 tests, variant test passed."
             cursor.execute(
                 """INSERT OR IGNORE INTO sprints (number, mode, status, started_at, completed_at, notes)
