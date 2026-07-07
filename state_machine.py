@@ -15,6 +15,7 @@ Usage:
 
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import time
@@ -108,6 +109,57 @@ def load_phases(cfg):
     return cfg.get("phases", DEFAULT_CONFIG["phases"])
 
 
+# ─── phase logging ────────────────────────────────────────────────────────────
+
+def log_phase_start(conn, sprint_id, phase, iteration, attempt):
+    """Insert a phase_runs row with status='running'. Returns the row id."""
+    cursor = conn.cursor()
+    cursor.execute(
+        """INSERT INTO phase_runs (sprint_id, phase, iteration, attempt, status)
+           VALUES (?, ?, ?, ?, 'running')""",
+        (sprint_id, phase, iteration, attempt),
+    )
+    conn.commit()
+    return cursor.lastrowid
+
+
+def log_phase_end(conn, run_id, success, output_summary="", error=""):
+    """Update a phase_runs row with completion status."""
+    cursor = conn.cursor()
+    if success:
+        cursor.execute(
+            """UPDATE phase_runs
+               SET status = 'passed',
+                   completed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+                   output_summary = ?
+               WHERE id = ?""",
+            (output_summary, run_id),
+        )
+    else:
+        cursor.execute(
+            """UPDATE phase_runs
+               SET status = 'failed',
+                   completed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+                   error = ?
+               WHERE id = ?""",
+            (error, run_id),
+        )
+    conn.commit()
+
+
+def complete_sprint(conn, sprint_id, status="completed"):
+    """Mark a sprint as completed or failed."""
+    cursor = conn.cursor()
+    cursor.execute(
+        """UPDATE sprints
+           SET status = ?,
+               completed_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+           WHERE id = ?""",
+        (status, sprint_id),
+    )
+    conn.commit()
+
+
 # ─── main loop ───────────────────────────────────────────────────────────────
 
 def run_with_config(cfg):
@@ -116,6 +168,10 @@ def run_with_config(cfg):
     This is the programmatic entry point, used by sm.py and other callers.
     The config dict should have the same shape as the default config or
     a loaded config.json.
+
+    Recognised logging keys:
+        db_path     — path to SQLite database for phase_runs logging
+        sprint_id   — sprint id to log phase runs against
     """
     max_iterations = cfg.get("max_iterations", DEFAULT_CONFIG["max_iterations"])
     max_retries = cfg.get("max_retries", DEFAULT_CONFIG["max_retries"])
@@ -124,59 +180,94 @@ def run_with_config(cfg):
     backlog_file = cfg.get("backlog_file", DEFAULT_CONFIG["backlog_file"])
     signal_file = cfg.get("signal_file", DEFAULT_CONFIG["signal_file"])
     ship_command = cfg.get("ship_command", DEFAULT_CONFIG["ship_command"])
+    db_path = cfg.get("db_path")
+    sprint_id = cfg.get("sprint_id")
 
-    print(f"🚢 Matsya State Machine — max_iterations={max_iterations}, max_retries={max_retries}")
-    print(f"   Phases: {', '.join(phases)}")
-    print()
+    # Open DB connection for phase logging (optional)
+    log_conn = None
+    if db_path and sprint_id:
+        log_conn = sqlite3.connect(db_path)
 
-    iteration = 1
-    while iteration <= max_iterations:
-        print(f"{'='*60}")
-        print(f"  Iteration {iteration}")
-        print(f"{'='*60}")
+    try:
+        print(f"🚢 Matsya State Machine — max_iterations={max_iterations}, max_retries={max_retries}")
+        if sprint_id:
+            print(f"   Sprint #{sprint_id} — logging to {db_path}")
+        print(f"   Phases: {', '.join(phases)}")
+        print()
 
-        for phase in phases:
-            print(f"\n  ▶ Phase: {phase}")
+        iteration = 1
+        while iteration <= max_iterations:
+            print(f"{'='*60}")
+            print(f"  Iteration {iteration}")
+            print(f"{'='*60}")
 
-            if phase == "GATE":
-                if has_backlog(backlog_file):
-                    print(f"  → Backlog non-empty. Continuing to iteration {iteration + 1}.")
-                    break
+            for phase in phases:
+                print(f"\n  ▶ Phase: {phase}")
+
+                if phase == "GATE":
+                    if has_backlog(backlog_file):
+                        print(f"  → Backlog non-empty. Continuing to iteration {iteration + 1}.")
+                        break
+                    else:
+                        print(f"  → Backlog empty. Shipping.")
+                        subprocess.run(["bash", "-c", ship_command])
+                        print(f"  → Waiting for Vasuki signal...")
+                        if wait_for_signal(signal_file):
+                            print(f"  → Signal received. Continuing to next iteration.")
+                            break
+                        else:
+                            print(f"  → No signal. Exiting.")
+                            return
                 else:
-                    print(f"  → Backlog empty. Shipping.")
-                    subprocess.run(["bash", "-c", ship_command])
-                    print(f"  → Waiting for Vasuki signal...")
-                    if wait_for_signal(signal_file):
-                        print(f"  → Signal received. Continuing to next iteration.")
-                        break
-                    else:
-                        print(f"  → No signal. Exiting.")
-                        return
-            else:
-                script = scripts.get(phase)
-                if not script:
-                    print(f"  ⚠  No script configured for phase {phase} — skipping")
-                    continue
+                    script = scripts.get(phase)
+                    if not script:
+                        print(f"  ⚠  No script configured for phase {phase} — skipping")
+                        continue
 
-                success = False
-                for attempt in range(1, max_retries + 1):
-                    print(f"     Attempt {attempt}/{max_retries}")
-                    success = run_script(script, phase, iteration)
-                    if success:
-                        break
-                    if attempt < max_retries:
-                        print(f"     Retrying...")
-                    else:
-                        print(f"  ✗ Phase {phase} failed after {max_retries} attempts.")
+                    success = False
+                    for attempt in range(1, max_retries + 1):
+                        print(f"     Attempt {attempt}/{max_retries}")
 
-                if not success:
-                    print(f"\n  ✗ Iteration {iteration} failed at phase {phase}.")
-                    sys.exit(1)
+                        # Log phase start
+                        run_id = None
+                        if log_conn and sprint_id:
+                            run_id = log_phase_start(log_conn, sprint_id, phase, iteration, attempt)
 
-        iteration += 1
+                        success = run_script(script, phase, iteration)
 
-    print(f"\n{'='*60}")
-    print(f"  All {max_iterations} iterations completed.")
+                        # Log phase end
+                        if log_conn and run_id:
+                            output = f"Phase {phase} iter {iteration} attempt {attempt}"
+                            if success:
+                                log_phase_end(log_conn, run_id, True, output_summary=output)
+                            else:
+                                log_phase_end(log_conn, run_id, False, error=f"Script failed: {script}")
+
+                        if success:
+                            break
+                        if attempt < max_retries:
+                            print(f"     Retrying...")
+                        else:
+                            print(f"  ✗ Phase {phase} failed after {max_retries} attempts.")
+
+                    if not success:
+                        print(f"\n  ✗ Iteration {iteration} failed at phase {phase}.")
+                        # Log sprint failure
+                        if log_conn and sprint_id:
+                            complete_sprint(log_conn, sprint_id, status="failed")
+                        sys.exit(1)
+
+            iteration += 1
+
+        # All iterations completed successfully
+        print(f"\n{'='*60}")
+        print(f"  All {max_iterations} iterations completed.")
+        if log_conn and sprint_id:
+            complete_sprint(log_conn, sprint_id, status="completed")
+
+    finally:
+        if log_conn:
+            log_conn.close()
 
 
 def main():

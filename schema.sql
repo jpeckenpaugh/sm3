@@ -30,3 +30,30 @@ CREATE TABLE IF NOT EXISTS profile_components (
     params       TEXT    DEFAULT '{}',      -- JSON overrides
     UNIQUE(profile_id, component_id)
 );
+
+CREATE TABLE IF NOT EXISTS sprints (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    number       INTEGER NOT NULL,
+    mode         TEXT    NOT NULL DEFAULT 'driven'
+                     CHECK (mode IN ('driven', 'manual', 'hybrid')),
+    status       TEXT    NOT NULL DEFAULT 'planned'
+                     CHECK (status IN ('planned', 'active', 'completed', 'failed', 'aborted')),
+    started_at   TEXT,
+    completed_at TEXT,
+    notes        TEXT    DEFAULT '',
+    UNIQUE(number)
+);
+
+CREATE TABLE IF NOT EXISTS phase_runs (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    sprint_id      INTEGER NOT NULL REFERENCES sprints(id),
+    phase          TEXT    NOT NULL,
+    iteration      INTEGER NOT NULL DEFAULT 1,
+    attempt        INTEGER NOT NULL DEFAULT 1,
+    status         TEXT    NOT NULL DEFAULT 'running'
+                     CHECK (status IN ('running', 'passed', 'failed', 'skipped')),
+    started_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    completed_at   TEXT,
+    output_summary TEXT    DEFAULT '',
+    error          TEXT    DEFAULT ''
+);
