@@ -82,6 +82,7 @@ A flat JSON file maintained by the CLI for project discovery:
 
 ```json
 {
+  "default": "sm3",
   "projects": [
     {
       "name": "sm3",
@@ -94,7 +95,9 @@ A flat JSON file maintained by the CLI for project discovery:
 }
 ```
 
+- `"default"` — names the project used when no `--db` flag, `.sm-config.json`, or `SM_PROJECT` env var resolves
 - Written by `sm init --db <path>`
+- `"default"` set with `sm projects default <name>`
 - Read by `sm list projects` and auto-discovery
 - Human-editable in a pinch — git-friendly, grep-friendly, `jq`-friendly
 - No secondary SQLite layer — JSON is the registry, directly
@@ -115,9 +118,15 @@ After init, the project is fully self-contained. The database is the single sour
 
 ### Project Discovery
 
-When no `--db` flag is given, `sm` looks for `.sm-config.json` in the current directory and its parents. If found, it reads the database path from it. If not found, it falls back to the default `matsya.db` in the current directory.
+When no `--db` flag is given, `sm` resolves the database in this order:
 
-The user can always override with explicit `--db <path>`.
+1. **`.sm-config.json`** — walk up from the current directory. If found, use its `db_path`.
+2. **`SM_PROJECT` env var** — lookup the project name in `~/.sm/projects.json`. If found, use its `db_path`.
+3. **`"default"` in registry** — if `~/.sm/projects.json` has a `"default"` field, use that project's `db_path`.
+4. **`matsya.db` in current directory** — compatibility fallback for directories not yet initialized as projects.
+5. **None of the above** — error: "No project found. Run `sm init --db <path>` or specify `--db`."
+
+The user can always override any step with explicit `--db <path>`.
 
 ### Adopting the Current Directory
 
@@ -262,13 +271,14 @@ Sprint 2 (driven, active) ──────────────────
 ### Project system
 
 6. `sm init --db <path>` — bootstraps a new project: creates DB with schema, seeds profiles, writes `.sm-config.json`, generates agent files
-7. `~/.sm/projects.json` — registry written by `sm init`, read by discovery
+7. `~/.sm/projects.json` — registry written by `sm init`, read by discovery; includes `"default"` field
 8. `.sm-config.json` auto-discovery — when no `--db` flag is given, walk up from current directory
 9. `sm list projects` — reads the registry and displays known projects
+10. `sm projects default <name>` — sets the `"default"` field in the registry
 
 ### Reconciliation
 
-10. Seed Sprint 01 as `manual` — adopt the current working directory's existing work into the log
+11. Seed Sprint 01 as `manual` — adopt the current working directory's existing work into the log
 
 ### Explicitly deferred to Sprint 03+
 
@@ -286,7 +296,7 @@ Sprint 2 (driven, active) ──────────────────
 |-----------|-------|
 | **New tables** | 2 (`sprints`, `phase_runs`) |
 | **New files** | `~/.sm/projects.json` (registry), `.sm-config.json` (project marker) |
-| **New commands** | `sm init`, `sm log`, `sm sprint`, `sm list projects` |
+| **New commands** | `sm init`, `sm log`, `sm sprint`, `sm list projects`, `sm projects default` |
 | **Modified commands** | State machine loop (writes to DB), `sm seed` (adds new tables) |
 | **Deferred** | `sm status` rewrite, profile inheritance, variant workflow, params, export/import |
 | **Reconciliation** | Seed existing Sprint 01 as manual entry |
