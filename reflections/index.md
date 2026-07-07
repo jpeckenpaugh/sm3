@@ -2,6 +2,8 @@
 
 Documents written by Saraswati during the first cycle of the self-defining state machine.
 
+**Entry point:** [`/root/sm/README.md`](../README.md) — the operator's confession, with sibling reflections from GPT and Gemini preserved verbatim.
+
 ## Contents
 
 | Document | Description | Date |
