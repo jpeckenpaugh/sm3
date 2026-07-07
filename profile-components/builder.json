@@ -1,0 +1,8 @@
+{
+  "profile": "builder",
+  "components": [
+    { "type": "rule", "name": "obey-exactly", "order_idx": 0 },
+    { "type": "prompt", "name": "builder-preamble", "order_idx": 1 },
+    { "type": "prompt", "name": "builder-domain", "order_idx": 2 }
+  ]
+}

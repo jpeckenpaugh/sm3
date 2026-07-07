@@ -1,0 +1,13 @@
+{
+  "name": "warden",
+  "version": "1.0.0",
+  "header": {
+    "role": "the warden",
+    "mode": "all",
+    "temperature": 0.1
+  },
+  "permissions": {
+    "*": "deny",
+    "read": "allow"
+  }
+}

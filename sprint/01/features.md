@@ -12,6 +12,7 @@
 | 4 | `ft003-run-command.md` | Run Command (`sm run --profile`) | ft001, ft002 |
 | 5 | `ft005-status-command.md` | Status Command (`sm status`) | ft003 (needs state from running) |
 | 6 | `ft006-generate-agent.md` | Generate Agent (`sm generate agent`) | ft001, ft002 |
+| 7 | `ft007-check-syntax-tool.md` | Check Syntax Tool (`check_syntax`) | ft001, ft006 |
 
 ---
 
@@ -28,6 +29,8 @@
 **ft005** depends on the run command producing state that can be queried.
 
 **ft006** is the capstone — it consumes everything built before it to produce the final artifact (OpenCode agent files).
+
+**ft007** is the narrowest feature — a single-purpose tool for syntax verification. It depends on ft001 (the Builder profile must exist in seed data) and ft006 (the generated agent template must include the tool permission). It can be built at any point after ft001+ft006, but is placed last because it modifies an existing profile rather than creating new infrastructure.
 
 ---
 

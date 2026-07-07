@@ -1,0 +1,7 @@
+{
+  "profile": "origin",
+  "components": [
+    { "type": "prompt", "name": "origin-preamble", "order_idx": 0 },
+    { "type": "prompt", "name": "origin-domain", "order_idx": 1 }
+  ]
+}

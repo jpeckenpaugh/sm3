@@ -1,0 +1,12 @@
+{
+  "name": "courier",
+  "version": "1.0.0",
+  "header": {
+    "role": "the courier",
+    "mode": "all",
+    "temperature": 0.1
+  },
+  "permissions": {
+    "*": "deny"
+  }
+}

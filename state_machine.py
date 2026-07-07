@@ -110,15 +110,16 @@ def load_phases(cfg):
 
 # ─── main loop ───────────────────────────────────────────────────────────────
 
-def main():
-    config_path = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].startswith("--config=") else None
-    if config_path:
-        config_path = config_path.split("=", 1)[1]
-    cfg = load_config(config_path)
+def run_with_config(cfg):
+    """Run the state machine with a given config dict.
 
+    This is the programmatic entry point, used by sm.py and other callers.
+    The config dict should have the same shape as the default config or
+    a loaded config.json.
+    """
     max_iterations = cfg.get("max_iterations", DEFAULT_CONFIG["max_iterations"])
     max_retries = cfg.get("max_retries", DEFAULT_CONFIG["max_retries"])
-    phases = load_phases(cfg)
+    phases = cfg.get("phases", DEFAULT_CONFIG["phases"])
     scripts = cfg.get("phase_scripts", DEFAULT_CONFIG["phase_scripts"])
     backlog_file = cfg.get("backlog_file", DEFAULT_CONFIG["backlog_file"])
     signal_file = cfg.get("signal_file", DEFAULT_CONFIG["signal_file"])
@@ -138,10 +139,8 @@ def main():
             print(f"\n  ▶ Phase: {phase}")
 
             if phase == "GATE":
-                # Gate phase: check backlog
                 if has_backlog(backlog_file):
                     print(f"  → Backlog non-empty. Continuing to iteration {iteration + 1}.")
-                    # break out of phases, go to next iteration
                     break
                 else:
                     print(f"  → Backlog empty. Shipping.")
@@ -174,12 +173,19 @@ def main():
                     print(f"\n  ✗ Iteration {iteration} failed at phase {phase}.")
                     sys.exit(1)
 
-        # else: for-loop completed without break (skip — GATE always breaks or returns)
-
         iteration += 1
 
     print(f"\n{'='*60}")
     print(f"  All {max_iterations} iterations completed.")
+
+
+def main():
+    config_path = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].startswith("--config=") else None
+    if config_path:
+        config_path = config_path.split("=", 1)[1]
+    cfg = load_config(config_path)
+
+    run_with_config(cfg)
 
 
 if __name__ == "__main__":

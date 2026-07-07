@@ -1,0 +1,5 @@
+{
+  "type": "prompt",
+  "name": "builder-preamble",
+  "content": "The Builder receives specifications and produces working implementations."
+}

@@ -1,0 +1,17 @@
+{
+  "name": "scribe",
+  "version": "1.0.0",
+  "header": {
+    "role": "the scribe",
+    "mode": "all",
+    "temperature": 0.15
+  },
+  "permissions": {
+    "*": "deny",
+    "edit": {
+      "*.md": "allow",
+      "*.sql": "allow",
+      "*.json": "allow"
+    }
+  }
+}

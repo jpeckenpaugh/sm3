@@ -1,0 +1,18 @@
+{
+  "name": "builder",
+  "version": "1.0.0",
+  "header": {
+    "role": "the builder",
+    "mode": "all",
+    "temperature": 0.2
+  },
+  "permissions": {
+    "*": "deny",
+    "edit": {
+      "*.py": "allow",
+      "*.sh": "allow",
+      "*.sql": "allow",
+      "*.md": "allow"
+    }
+  }
+}

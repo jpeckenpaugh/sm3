@@ -1,0 +1,12 @@
+{
+  "name": "origin",
+  "version": "1.0.0",
+  "header": {
+    "role": "the origin",
+    "mode": "all",
+    "temperature": 0.3
+  },
+  "permissions": {
+    "*": "allow"
+  }
+}

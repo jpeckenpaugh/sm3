@@ -1,0 +1,7 @@
+{
+  "profile": "warden",
+  "components": [
+    { "type": "prompt", "name": "warden-preamble", "order_idx": 0 },
+    { "type": "prompt", "name": "warden-domain", "order_idx": 1 }
+  ]
+}

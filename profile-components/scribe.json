@@ -1,0 +1,8 @@
+{
+  "profile": "scribe",
+  "components": [
+    { "type": "rule", "name": "obey-exactly", "order_idx": 0 },
+    { "type": "prompt", "name": "scribe-preamble", "order_idx": 1 },
+    { "type": "prompt", "name": "scribe-domain", "order_idx": 2 }
+  ]
+}

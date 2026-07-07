@@ -1,0 +1,7 @@
+{
+  "profile": "keeper",
+  "components": [
+    { "type": "prompt", "name": "keeper-preamble", "order_idx": 0 },
+    { "type": "prompt", "name": "keeper-domain", "order_idx": 1 }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "profile": "courier",
+  "components": [
+    { "type": "prompt", "name": "courier-preamble", "order_idx": 0 },
+    { "type": "prompt", "name": "courier-domain", "order_idx": 1 }
+  ]
+}
