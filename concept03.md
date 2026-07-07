@@ -68,70 +68,79 @@ CREATE TABLE IF NOT EXISTS phase_runs (
 
 ## Projects — Sealed Microverses
 
-The state machine does not operate on itself. It is pointed at a **project** — a directory containing its own SQLite database, working directories, and generated agent files. Each project is a self-contained microverse with no global fallback.
+The state machine is pointed at a **project** — a directory containing its own SQLite database (`project.db`), working directories, and generated agent files. Each project is a self-contained microverse with no global fallback.
 
 ### The Principle
 
-> Every artifact a project needs lives inside the project. There is no "shared global profile." If it's not in the project's database, it doesn't exist for that project.
+> Every artifact a project needs lives inside the project. The database file *is* the project — not a record within it.
 
-### projects table
+There is no `projects` table inside the database. The database file itself is the project identity. Its path in the filesystem is its name.
 
-```sql
-CREATE TABLE IF NOT EXISTS projects (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    name        TEXT    NOT NULL,
-    root_path   TEXT    NOT NULL UNIQUE,
-    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    active      INTEGER NOT NULL DEFAULT 1
-);
+### The Registry (`~/.sm/projects.json`)
+
+A flat JSON file maintained by the CLI for project discovery:
+
+```json
+{
+  "projects": [
+    {
+      "name": "sm3",
+      "db_path": "/root/sm/matsya.db",
+      "created": "2026-07-07",
+      "target": "agent-framework",
+      "last_opened": "2026-07-10"
+    }
+  ]
+}
 ```
 
-One row per project. The database is local to the project directory. The canonical profiles database (seed JSON) is a separate artifact used only at init time.
+- Written by `sm init --db <path>`
+- Read by `sm list projects` and auto-discovery
+- Human-editable in a pinch — git-friendly, grep-friendly, `jq`-friendly
+- No secondary SQLite layer — JSON is the registry, directly
 
-### `sm init <path>` — Project Bootstrap
+### `sm init --db <path>` — Project Bootstrap
 
-Creates a new project at the given path:
+Creates a new project at the given database path:
 
 1. Create directory structure: `backlog/`, `sprint/`, `.opencode/agents/`
-2. Create a fresh SQLite database at `<path>/project.db`
-3. Create `sprints`, `phase_runs`, and `projects` tables
-4. Seed the six canonical profiles into `<path>/project.db` from seed JSON
+2. Create a fresh SQLite database at `<path>` (e.g. `matsya.db`)
+3. Create `sprints` and `phase_runs` tables
+4. Seed the six canonical profiles from seed JSON
 5. Write a `.sm-config.json` marker file identifying this as a managed project
 6. Generate initial agent files from the seeded profiles via `sm generate agent`
+7. Add an entry to `~/.sm/projects.json`
 
-After init, the project is fully self-contained. The database at `project.db` is the single source of truth for that project's profiles, sprints, and execution history.
+After init, the project is fully self-contained. The database is the single source of truth for that project's profiles, sprints, and execution history.
 
-### `sm --project <path>` — Targeting a Project
+### Project Discovery
 
-All commands accept a `--project` flag pointing to the project directory:
+When no `--db` flag is given, `sm` looks for `.sm-config.json` in the current directory and its parents. If found, it reads the database path from it. If not found, it falls back to the default `matsya.db` in the current directory.
 
-```bash
-sm --project ~/workspaces/my-app init                 # (--project is implicit here)
-sm --project ~/workspaces/my-app status
-sm --project ~/workspaces/my-app run --profile scribe
-sm --project ~/workspaces/my-app list profiles
-sm --project ~/workspaces/my-app log --sprint 2
-```
+The user can always override with explicit `--db <path>`.
 
-The state machine reads `project.db` from the target project. It never falls back to a global profile or a different database.
+### Adopting the Current Directory
 
-### `sm init` from an existing directory
+The current working directory already has a seeded database (`matsya.db`), a sprint structure, and a backlog. Running `sm init --db matsya.db` from this directory:
 
-If the target path already has a project structure (backlog/, sprint/, etc.), `sm init` detects the existing artifacts and asks:
+1. Detects existing `sprint/01/` with artifacts
+2. Detects existing `backlog/` with feature files
+3. Detects existing `matsya.db` with profiles
+4. Prompts: "This directory has existing sprint work. Seed Sprint 01 as 'manual'?"
+5. If yes, inserts a `sprints` row: `(number=1, mode='manual', status='completed', notes='Sprint 01 built by hand. 7 features, 54 tests, variant test passed.')`
+6. Writes `.sm-config.json` pointing at the existing `matsya.db`
+7. Adds entry to `~/.sm/projects.json`
 
-- "This directory appears to have active sprint work. Seed a manual sprint entry to acknowledge it?"
-- If yes, it creates a Sprint 01 entry with `mode: manual` and populates the log.
-
-This is how we seed the current working directory as a project without losing the work already done.
+Nothing is overwritten. The existing work is acknowledged and anchored in the log.
 
 ### No Global Fallback
 
 The state machine has one rule for profile resolution:
 
-1. Check `project.db` → `profiles` table
-2. If not found → error: "Profile 'x' not found in this project. Use `sm init --seed` or add it manually."
+1. Check the project's database → `profiles` table
+2. If not found → error: "Profile '<name>' not found in this project. Run `sm init --seed <path>` or add it manually."
 
-No fallback to a global profiles database. No assumption that a profile exists because it exists in another project. Each project is its own world.
+No fallback to a global profiles database. No assumption that a profile exists because it exists in another project.
 
 ---
 
@@ -233,27 +242,54 @@ Sprint 2 (driven, active) ──────────────────
 ## Open Questions for the Builder
 
 1. Should `phase_runs` be written synchronously (blocking the state machine) or asynchronously (fire-and-forget)? Synchronous is safer; async could lose entries on crash.
-2. Should the state machine's config.json include a `db_path` field for the execution log, or should it always use the same database as profiles?
-3. How does `sm status` handle the gap between the log and the filesystem? Display both and let the human reconcile? Auto-seed from git history?
+2. Should the state machine's config.json include a `db_path` field, or should it always connect to the project database directly?
+3. How should `sm log` format output — tabular, JSON, or both?
 4. Should there be an `sm log prune` command for archiving old phase runs, or is append-only forever the right model?
-5. **Project discovery** — should `sm status` without `--project` scan the current directory for a `.sm-config.json` marker, or require the flag always?
-6. **Profile mutation** — if a user edits a profile within a project (via `sm profile edit`), should `sm generate agent` reflect those changes immediately, or should there be a `sm sync` step?
+5. **Registry location** — `~/.sm/projects.json` is the default. Should it be configurable via an environment variable?
 
 ---
 
 ## What This Sprint Delivers
 
-1. The `projects` table in `schema.sql`
-2. `sm init <path>` — bootstraps a new project with its own database, seeded profiles, and directory structure
-3. `--project <path>` flag on all commands for targeting a specific project
-4. Two new tables (`sprints`, `phase_runs`) for execution history
-5. `seed.py` updated to create all new tables during init
-6. State machine writes to `phase_runs` during execution
-7. `sm sprint start/complete/fail/note` subcommands for manual logging
-8. `sm status` reads from execution log instead of inferring from env vars
-9. `sm log` command for viewing execution history
-10. Seeding Sprint 01 as a manual sprint so the log matches reality
-11. No global profile fallback — each project is its own sealed world
+### Core (must have)
+
+1. `sprints` table — one row per sprint, tracks mode (driven/manual/hybrid) and status
+2. `phase_runs` table — append-only log of every phase attempt within a sprint
+3. State machine writes to `phase_runs` during execution (synchronous, project DB connection)
+4. `sm log` command — reads and displays execution history
+5. `sm sprint start/complete/fail/note` subcommands — manual logging for work done outside the machine
+
+### Project system
+
+6. `sm init --db <path>` — bootstraps a new project: creates DB with schema, seeds profiles, writes `.sm-config.json`, generates agent files
+7. `~/.sm/projects.json` — registry written by `sm init`, read by discovery
+8. `.sm-config.json` auto-discovery — when no `--db` flag is given, walk up from current directory
+9. `sm list projects` — reads the registry and displays known projects
+
+### Reconciliation
+
+10. Seed Sprint 01 as `manual` — adopt the current working directory's existing work into the log
+
+### Explicitly deferred to Sprint 03+
+
+- Full `sm status` rewrite (still reads from env vars/filesystem for now)
+- Profile inheritance (`extends`)
+- Variant creation workflow (`sm profile clone/edit`)
+- Component params override system
+- Profile export/import
+
+---
+
+## Sprint 02 Summary
+
+| Dimension | Scope |
+|-----------|-------|
+| **New tables** | 2 (`sprints`, `phase_runs`) |
+| **New files** | `~/.sm/projects.json` (registry), `.sm-config.json` (project marker) |
+| **New commands** | `sm init`, `sm log`, `sm sprint`, `sm list projects` |
+| **Modified commands** | State machine loop (writes to DB), `sm seed` (adds new tables) |
+| **Deferred** | `sm status` rewrite, profile inheritance, variant workflow, params, export/import |
+| **Reconciliation** | Seed existing Sprint 01 as manual entry |
 
 ---
 
