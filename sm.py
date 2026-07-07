@@ -29,6 +29,9 @@ SM_CONFIG_FILE = ".sm-config.json"
 REGISTRY_DIR = os.path.expanduser("~/.sm")
 REGISTRY_FILE = os.environ.get("SM_PROJECTS_PATH") or os.path.join(REGISTRY_DIR, "projects.json")
 
+# The directory where sm.py lives — seed data (profiles/, components/, etc.) is relative to this
+SM_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 # ─── Project / DB resolution ────────────────────────────────────────────────
 
@@ -791,8 +794,8 @@ def cmd_init(args):
         import seed
         exit_code = seed.seed_database(
             db_path=db_path,
-            schema_path=args.schema or "schema.sql",
-            seed_root=args.seed_root or os.getcwd(),
+            schema_path=args.schema,
+            seed_root=args.seed_root,
         )
         if exit_code != 0:
             print("  Schema or seed failed — see messages above.")
@@ -1026,8 +1029,8 @@ def build_parser():
     p_init = subparsers.add_parser("init", help="Bootstrap a new project directory")
     p_init.add_argument("db_path", metavar="DB_PATH", help="Database path (e.g. matsya.db)")
     p_init.add_argument("--name", default=None, help="Project name (default: directory basename)")
-    p_init.add_argument("--schema", default="schema.sql", help="Schema SQL file path")
-    p_init.add_argument("--seed-root", default=None, help="Root directory containing seed data")
+    p_init.add_argument("--schema", default=os.path.join(SM_DIR, "schema.sql"), help="Schema SQL file path")
+    p_init.add_argument("--seed-root", default=SM_DIR, help="Root directory containing seed data")
     p_init.add_argument("--yes", "-y", action="store_true", help="Auto-accept adoption prompts")
     p_init.set_defaults(func=cmd_init)
 
