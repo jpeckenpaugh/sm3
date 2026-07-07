@@ -60,7 +60,9 @@ CREATE TABLE IF NOT EXISTS phase_runs (
 );
 ```
 
-- Append-only. Never updated in place — a retry creates a new row.
+- Append-only at the sprint level — history is never lost; rows are never deleted.
+- Each attempt gets its own row (incrementing `attempt`). That row's `status`, `completed_at`, `output_summary`, and `error` are **updated in place** when the attempt completes.
+- A retry creates a new row with `attempt+1`; the previous attempt's row retains its final state.
 - `output_summary` — brief description of what the phase produced. The state machine writes this after VERIFY.
 - `error` — error message if failed, empty if passed.
 

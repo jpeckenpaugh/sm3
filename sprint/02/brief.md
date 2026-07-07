@@ -59,6 +59,31 @@ Resolution order:
 
 `sm init` does not take a `--target` path in this sprint. All project artifacts (DB, backlog, sprint, agents) live under the same root. A future sprint can add `--target` to separate "where Matsya lives" from "where the code lives" — it's a backward-compatible addition.
 
+### Sprint lifecycle ownership
+
+Who creates and manages sprint rows depends on the sprint `mode`:
+
+| Mode | Sprint row lifecycle |
+|------|---------------------|
+| `driven` | **State machine creates on `sm run`.** Auto-increments sprint number (MAX + 1). Sets `status='active'` at start, `status='completed'` or `'failed'` at end. |
+| `manual` | **User via CLI.** `sm sprint start/complete/fail/note` subcommands. |
+| `hybrid` | Starts driven. If Origin intervenes mid-sprint, the machine updates `mode` to `'hybrid'` and the user can add notes. |
+
+`sm run` does **not** need a `--sprint` flag. In driven mode, the machine creates the sprint. Resume-after-crash is deferred to a future sprint (the POC state machine does not need it).
+
+### `phase_runs` update model
+
+The `phase_runs` table is append-only at the sprint level — rows are never deleted. However, the **current attempt's row is updated** when the attempt completes:
+
+| Event | Action |
+|-------|--------|
+| Phase starts | `INSERT INTO phase_runs (..., status='running')` |
+| Phase passes | `UPDATE phase_runs SET status='passed', completed_at=..., output_summary=? WHERE id=?` |
+| Phase fails | `UPDATE phase_runs SET status='failed', completed_at=..., error=? WHERE id=?` |
+| Retry | New `INSERT` with `attempt = attempt + 1` (previous row retains its final state) |
+
+This gives an auditable history (each attempt is a distinct row) while keeping the current attempt's state cleanly queryable.
+
 ---
 
 ## What to Build
@@ -98,20 +123,34 @@ CREATE TABLE IF NOT EXISTS phase_runs (
 
 ### 2. State machine logging
 
-In `state_machine.py`, `run_with_config()` gains:
+`state_machine.py` gains `import sqlite3` at the top. `run_with_config()` opens its own database connection using `cfg["db_path"]` — separate from the CLI's connection used to load the profile.
+
+`cmd_run()` in `sm.py` must add `db_path` to the config dict before calling `run_with_config()`.
+
+In `run_with_config()`:
 
 ```python
-# Before running a phase
-conn.execute("INSERT INTO phase_runs (sprint_id, phase, iteration, attempt, status) VALUES (?, ?, ?, ?, 'running')")
+import sqlite3
 
-# After VERIFY passes
-conn.execute("UPDATE phase_runs SET status='passed', completed_at=..., output_summary=? WHERE id=?")
-
-# After VERIFY fails
-conn.execute("UPDATE phase_runs SET status='failed', completed_at=..., error=? WHERE id=?")
+def run_with_config(cfg):
+    db_path = cfg.get("db_path")
+    conn = sqlite3.connect(db_path) if db_path else None
+    # ...
+    try:
+        # ... loop logic ...
+        # Before running a phase
+        conn.execute("INSERT INTO phase_runs (sprint_id, phase, iteration, attempt, status) VALUES (?, ?, ?, ?, 'running')")
+        
+        # After VERIFY passes
+        conn.execute("UPDATE phase_runs SET status='passed', completed_at=..., output_summary=? WHERE id=?")
+        
+        # After VERIFY fails
+        conn.execute("UPDATE phase_runs SET status='failed', completed_at=..., error=? WHERE id=?")
+    finally:
+        if conn: conn.close()
 ```
 
-The `db_path` and `sprint_id` come from the config dict. The state machine connects to the project database directly.
+The `sprint_id` comes from the config dict as `cfg["sprint_id"]`, set by `cmd_run()` after creating or finding the current sprint.
 
 ### 3. `sm log` command
 
@@ -126,6 +165,8 @@ sm log --json             ← machine-readable
 
 Tabular format for human, JSON for piping.
 
+**Empty database**: If no sprints exist, display: "No sprints recorded. Start one with `sm sprint start --number 1 --mode driven`." With `--json`, output `[]`.
+
 ### 4. `sm sprint` subcommands
 
 ```
@@ -137,18 +178,25 @@ sm sprint note --number 1 --notes "..."
 
 Each writes to the `sprints` table. `start` inserts a row with `status='active'`. `complete` sets `status='completed'` and `completed_at`. `fail` sets `status='failed'`. `note` updates `notes` (appends if non-empty).
 
+**Duplicate sprint number**: The `sprints` table has `UNIQUE(number)`. Catch `sqlite3.IntegrityError` on insert and display: "Sprint {N} already exists. Use a different number or complete the existing sprint first."
+
+**`sm sprint note` append convention**: Prepend a `[YYYY-MM-DD]` timestamp and append with `\n\n` separator. E.g., running `sm sprint note --number 1 --notes "Adjusted scope"` appends `\n\n[2026-07-07] Adjusted scope` to the existing `notes` field.
+
 ### 5. `sm init --db <path>`
 
 Steps:
-1. Create `backlog/`, `sprint/`, `.opencode/agents/` alongside the DB file
-2. Create a fresh SQLite database at `<path>`
-3. Run `schema.sql` (which now includes `sprints` + `phase_runs`)
-4. Seed profiles from `profiles/`, `components/`, `profile-components/`
-5. Write `.sm-config.json` with `{ "db_path": "<absolute path>" }`
-6. Generate agent files from seeded profiles
-7. Add entry to `~/.sm/projects.json`
+1. Create `~/.sm/` directory if it doesn't exist (`os.makedirs(os.path.expanduser("~/.sm"), exist_ok=True)`)
+2. Create `backlog/`, `sprint/`, `.opencode/agents/` alongside the DB file
+3. Create a fresh SQLite database at `<path>`
+4. Run `schema.sql` (which now includes `sprints` + `phase_runs`)
+5. Seed profiles from `profiles/`, `components/`, `profile-components/`
+6. Write `.sm-config.json` with `{ "db_path": "<absolute path>" }`
+7. Generate agent files from seeded profiles
+8. Add entry to `~/.sm/projects.json` (upsert by name — if entry already exists, update `last_opened` instead of appending)
 
-If the target directory already has `sprint/01/` or `backlog/` artifacts, prompt: *"This directory has existing sprint work. Seed Sprint 01 as 'manual'?"*
+**`--yes` flag**: Auto-accepts the adoption prompt for scripting/CI. Default is interactive.
+
+**Adoption detection**: Checks for `sprint/01/features.md` AND `sprint/01/brief.md`. Both must exist to trigger the "Seed Sprint 01 as 'manual'?" prompt. If only one exists, skip the prompt (the directory is partially populated).
 
 ### 6. `~/.sm/projects.json` registry
 
