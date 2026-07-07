@@ -382,7 +382,8 @@ description: {description}
 mode: {mode}
 temperature: {temperature}
 permission:
-{permission_yaml}---
+{permission_yaml}
+---
 
 {assembled_body}
 """
