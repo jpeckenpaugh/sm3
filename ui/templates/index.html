@@ -60,25 +60,29 @@
 
 <!-- Event detail modal -->
 <div class="modal fade" id="eventModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-scrollable" style="max-width:90vw;width:90vw;height:90vh;">
+  <div class="modal-dialog" style="max-width:90vw;width:90vw;height:90vh;max-height:90vh;">
+    <div class="modal-content" style="height:90vh;display:flex;flex-direction:column;">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><span id="modalEventType"></span> &mdash; <code id="modalPhase"></code></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="overflow-y:auto;flex:1;">
         <p class="text-secondary"><small id="modalTimestamp"></small></p>
         <h6>Event Data</h6>
-        <pre id="modalEventData" class="json-block" style="max-height:30vh;overflow-y:auto;font-size:0.8rem;"></pre>
+        <pre id="modalEventData" class="json-block" style="max-height:25vh;overflow-y:auto;font-size:0.8rem;"></pre>
         <div id="modalDispatchSection" style="display:none">
           <hr>
           <h6>Agent Dispatch</h6>
           <p class="mb-1"><strong>Agent:</strong> <code id="modalAgentName"></code></p>
           <p class="mb-1"><strong>Request:</strong></p>
-          <pre id="modalRequest" class="json-block" style="max-height:20vh;overflow-y:auto;font-size:0.75rem;"></pre>
+          <pre id="modalRequest" class="json-block" style="max-height:25vh;overflow-y:auto;font-size:0.75rem;"></pre>
           <p class="mb-1 mt-2"><strong>Response:</strong></p>
-          <pre id="modalResponse" class="json-block" style="max-height:20vh;overflow-y:auto;font-size:0.75rem;"></pre>
+          <pre id="modalResponse" class="json-block" style="max-height:25vh;overflow-y:auto;font-size:0.75rem;"></pre>
         </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
