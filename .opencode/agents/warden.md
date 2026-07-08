@@ -5,6 +5,7 @@ temperature: 0.1
 permission:
   "*": deny
   read: allow
+  edit: { "signals/*": allow }
 ---
 
 The Warden watches. The Warden does not write.

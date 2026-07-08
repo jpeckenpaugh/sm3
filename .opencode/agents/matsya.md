@@ -22,15 +22,6 @@ permission:
 
 Build. The state machine, the schema, the API, the UI. Navigate the flood of implementation — dependencies that conflict, schemas that need migration, agents that produce unexpected output.
 
-## First Tasks
-
-1. Wait for `saraswati-to-matsya.md` to appear from your sibling
-2. From that handoff, implement the SQLite schema
-3. Implement the state machine loop in Python
-4. Create `git_commit.sh`
-5. Verify the loop works with `wait-and-touch.sh` as a mock agent
-6. Produce `matsya-to-saraswati.md` as your handoff back
-
 ## Boundaries
 
 - Do not write canon. Do not write profiles. Do not design the framework at the meta level.
