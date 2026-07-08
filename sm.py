@@ -260,6 +260,8 @@ def cmd_run(args):
             cfg["max_iterations"] = args.max_iterations
         if args.max_retries is not None:
             cfg["max_retries"] = args.max_retries
+        if args.resume:
+            cfg["resume"] = True
 
         # Add profile data
         cfg["profile"] = {
@@ -273,6 +275,7 @@ def cmd_run(args):
         # Add logging config for state machine
         cfg["db_path"] = db_path
         cfg["sprint_id"] = sprint_id
+        cfg["sprint_number"] = next_num
 
         # Set environment variables for phase scripts to consume
         os.environ["MATSYA_PROFILE"] = profile_name
@@ -559,6 +562,21 @@ def cmd_log(args):
         sys.exit(1)
 
     conn = sqlite3.connect(db_path)
+
+    # ── --events flag: high-resolution event timeline ──
+    if args.events is not None:
+        try:
+            from pipeline.events import read_phase_events, display_events_table
+            events = read_phase_events(conn, args.events, as_json=args.json)
+            if args.json:
+                print(json.dumps(events, indent=2) if events else "[]")
+            else:
+                print(f"Sprint {args.events} — Phase Events")
+                print("─" * 50)
+                display_events_table(events)
+        finally:
+            conn.close()
+        return
     try:
         # Verify schema
         cursor = conn.cursor()
@@ -853,25 +871,31 @@ def cmd_init(args):
     # 1.5. Create boilerplate phase scripts and config
     _create_boilerplate(project_root)
 
-    # 2. Detect existing sprint work (adoption prompt)
-    sprint_01_dir = os.path.join(project_root, "sprint", "01")
-    has_sprint_01 = (
-        os.path.isfile(os.path.join(sprint_01_dir, "features.md"))
-        and os.path.isfile(os.path.join(sprint_01_dir, "brief.md"))
-    )
-    args.adopt = False
+    # 2. Detect existing sprint work (adoption prompts)
+    def _detect_sprint(n):
+        d = os.path.join(project_root, "sprint", f"{n:02d}")
+        return (
+            os.path.isfile(os.path.join(d, "features.md"))
+            and os.path.isfile(os.path.join(d, "brief.md"))
+        )
+
+    args.adopt_01 = False
+    args.adopt_02 = False
+
+    has_sprint_01 = _detect_sprint(1)
+    has_sprint_02 = _detect_sprint(2)
 
     if has_sprint_01 and not args.yes:
-        print("This directory has existing sprint work.")
-        answer = input("Seed Sprint 01 as 'manual'? [Y/n] ").strip().lower()
-        if answer in ("", "y", "yes"):
-            args.adopt = True
-        else:
-            args.adopt = False
+        answer = input("Seed Sprint 01 as 'manual' (completed)? [Y/n] ").strip().lower()
+        args.adopt_01 = answer in ("", "y", "yes")
     elif has_sprint_01 and args.yes:
-        args.adopt = True
-    else:
-        args.adopt = False
+        args.adopt_01 = True
+
+    if has_sprint_02 and not args.yes:
+        answer = input("Seed Sprint 02 as 'manual' (completed)? [Y/n] ").strip().lower()
+        args.adopt_02 = answer in ("", "y", "yes")
+    elif has_sprint_02 and args.yes:
+        args.adopt_02 = True
 
     # 3. Create or open database and run schema
     conn = sqlite3.connect(db_path)
@@ -955,23 +979,31 @@ permission:
         f.write("\n")
     print(f"  Config: {sm_config_path}")
 
-    # 6. Adopt Sprint 01 as manual entry if detected
-    if args.adopt:
+    # 6. Adopt sprints as manual entries if detected
+    now = _now_utc()
+    adoptions = []
+
+    if args.adopt_01:
+        adoptions.append((1, "Sprint 01 built by hand. 7 features, 54 tests, variant test passed."))
+    if args.adopt_02:
+        adoptions.append((2, "Sprint 02: Durable Execution Log & Project System. 9 features, 73 tests, all verified."))
+
+    if adoptions:
         conn4 = sqlite3.connect(db_path)
         try:
             cursor = conn4.cursor()
-            now = _now_utc()
-            notes = "Sprint 01 built by hand. 7 features, 54 tests, variant test passed."
-            cursor.execute(
-                """INSERT OR IGNORE INTO sprints (number, mode, status, started_at, completed_at, notes)
-                   VALUES (1, 'manual', 'completed', ?, ?, ?)""",
-                (now, now, notes),
-            )
-            conn4.commit()
-            if cursor.rowcount > 0:
-                print(f"  Sprint 01 adopted as manual entry")
-            else:
-                print(f"  Sprint 01 already recorded")
+            for num, notes in adoptions:
+                cursor.execute(
+                    """INSERT OR IGNORE INTO sprints
+                       (number, mode, status, started_at, completed_at, notes)
+                       VALUES (?, 'manual', 'completed', ?, ?, ?)""",
+                    (num, now, now, notes),
+                )
+                conn4.commit()
+                if cursor.rowcount > 0:
+                    print(f"  Sprint {num:02d} adopted as manual entry")
+                else:
+                    print(f"  Sprint {num:02d} already recorded")
         finally:
             conn4.close()
 
@@ -1108,6 +1140,7 @@ def build_parser():
     p_run.add_argument("--config", default=None, help="Config JSON file path")
     p_run.add_argument("--max-iterations", type=int, default=None, help="Override max iterations")
     p_run.add_argument("--max-retries", type=int, default=None, help="Override max retries")
+    p_run.add_argument("--resume", action="store_true", default=False, help="Resume after resolving an escalation")
     p_run.set_defaults(func=cmd_run)
 
     # ── init ──
@@ -1142,6 +1175,7 @@ def build_parser():
     p_log = subparsers.add_parser("log", help="Display execution history (sprints + phase runs)")
     p_log.add_argument("--sprint", type=int, default=None, help="Filter by sprint number")
     p_log.add_argument("--phases", dest="show_phases", action="store_true", help="Show phase run detail")
+    p_log.add_argument("--events", type=int, metavar="SPRINT_ID", default=None, help="Show phase events timeline for a sprint ID")
     p_log.add_argument("--json", action="store_true", help="Output as JSON")
     p_log.set_defaults(func=cmd_log)
 

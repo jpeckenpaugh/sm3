@@ -82,6 +82,23 @@ def run_script(script_path, phase_name, iteration):
     return ok
 
 
+def _has_pipeline_tables(db_path):
+    """Return True if the database has pipeline_states and pipeline_transitions tables."""
+    if not db_path or not os.path.exists(db_path):
+        return False
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='pipeline_states'"
+        )
+        result = cursor.fetchone() is not None
+        conn.close()
+        return result
+    except Exception:
+        return False
+
+
 def has_backlog(backlog_path):
     """Return True if the backlog exists and has items.
 
@@ -175,6 +192,11 @@ def run_with_config(cfg):
     """Run the state machine with a given config dict.
 
     This is the programmatic entry point, used by sm.py and other callers.
+
+    If the database has pipeline_states and pipeline_transitions tables,
+    this function delegates to the DB-driven pipeline engine (Sprint 03).
+    Otherwise it falls back to the hardcoded 5-phase loop (original behaviour).
+
     The config dict should have the same shape as the default config or
     a loaded config.json.
 
@@ -182,6 +204,18 @@ def run_with_config(cfg):
         db_path     — path to SQLite database for phase_runs logging
         sprint_id   — sprint id to log phase runs against
     """
+    # Sprint 03: delegate to DB-driven pipeline engine if tables exist
+    db_path = cfg.get("db_path")
+    if db_path and _has_pipeline_tables(db_path):
+        try:
+            from pipeline.engine import run_pipeline
+            return run_pipeline(cfg)
+        except ImportError:
+            print("  ⚠  pipeline.engine not available — falling back to hardcoded loop")
+        except Exception as e:
+            print(f"  ⚠  Pipeline engine error: {e}")
+            print("     Falling back to hardcoded loop.")
+
     max_iterations = cfg.get("max_iterations", DEFAULT_CONFIG["max_iterations"])
     max_retries = cfg.get("max_retries", DEFAULT_CONFIG["max_retries"])
     phases = cfg.get("phases", DEFAULT_CONFIG["phases"])

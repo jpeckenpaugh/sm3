@@ -57,3 +57,57 @@ CREATE TABLE IF NOT EXISTS phase_runs (
     output_summary TEXT    DEFAULT '',
     error          TEXT    DEFAULT ''
 );
+
+-- Sprint 03: Pipeline tables
+-- The phase sequence lives in the database as data, not in Python as logic.
+
+CREATE TABLE IF NOT EXISTS pipeline_states (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL UNIQUE,
+    description TEXT    DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS pipeline_transitions (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_state_id    INTEGER NOT NULL REFERENCES pipeline_states(id),
+    to_state_id      INTEGER REFERENCES pipeline_states(id),  -- NULL = terminal
+    guard_expression TEXT    DEFAULT '',
+    is_parallel      INTEGER NOT NULL DEFAULT 0,
+    priority         INTEGER NOT NULL DEFAULT 0,
+    description      TEXT    DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS file_contracts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    state_name  TEXT    NOT NULL,
+    direction   TEXT    NOT NULL CHECK (direction IN ('input', 'output')),
+    pattern     TEXT    NOT NULL,
+    description TEXT    DEFAULT '',
+    optional    INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS phase_events (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    sprint_id      INTEGER NOT NULL REFERENCES sprints(id),
+    phase          TEXT    NOT NULL,
+    iteration      INTEGER NOT NULL,
+    attempt        INTEGER NOT NULL,
+    event_type     TEXT    NOT NULL CHECK (event_type IN (
+                        'phase_start',
+                        'phase_script_start',
+                        'phase_script_exit',
+                        'phase_script_output',
+                        'contract_check',
+                        'contract_missing',
+                        'escalation_written',
+                        'escalation_resolved',
+                        'retry',
+                        'phase_end',
+                        'kurma_intervention'
+                    )),
+    event_data     TEXT    DEFAULT '',
+    created_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_phase_events_sprint
+    ON phase_events(sprint_id, phase, iteration);

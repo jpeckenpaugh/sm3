@@ -257,6 +257,14 @@ def seed_database(db_path=None, schema_path=None, seed_root=None):
         pc_count = load_seed_profile_components(conn, pc_dir)
         print(f"  → {pc_count} profile-component links loaded\n")
 
+        print("── Loading pipeline data ──")
+        try:
+            from pipeline.seeds import seed_pipeline_tables
+            seed_pipeline_tables(conn)
+        except ImportError:
+            print("  ⚠  pipeline.seeds module not available — skipping pipeline seed")
+        print()
+
         print("── Seed complete ──")
         return 0
     except Exception as e:
