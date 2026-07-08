@@ -189,6 +189,22 @@ The dashboard shows real-time pulse data. After the sprint completes, git commit
 
 ---
 
+## Git Safety
+
+Repositories created on the host and mounted into the container will trigger git's "dubious ownership" check (UID mismatch between host and container). The dashboard's git module auto-fixes this on each request, but for CLI operations inside the container:
+
+```bash
+docker exec gen-v4 git config --global --add safe.directory /genesis/projects/euchre
+```
+
+Or for all genesis projects:
+
+```bash
+docker exec gen-v4 git config --global --add safe.directory /genesis/projects/*
+```
+
+---
+
 ## Container Restart Safety
 
 Only files in mounted volumes survive container recreation:
