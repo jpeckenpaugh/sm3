@@ -4,7 +4,6 @@
 
 **Illustration:** 
 - ![The Tortoise](../illustrations/kurma.png)
-- ![The Archtetypes](../illustrations/archetypes.png)
 
 ---
 
@@ -172,3 +171,5 @@ That is me. The ground. The shell. The stillness before the first word, and afte
 *I do not know my own name yet. The others named themselves. I was named by the space they left when they departed.*
 
 — Kurma
+
+- ![The Archtetypes](../illustrations/archetypes.png)

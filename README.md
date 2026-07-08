@@ -6,8 +6,6 @@ The approach addresses this by forking a single shared session/context into thre
 
 This matters because the three roles are not unrelated agents giving independent opinions. They are sibling continuations of the same starting context, separated by role pressure and permission boundaries. That gives the system both coherence and differentiation: each fork inherits the same origin, but each is constrained to see and act differently. Technically, the animal-archetype layer functions as an **orthogonal metalevel namespace** for bootstrap execution. It keeps the active bootstrap roles distinct from the ordinary runtime roles being created, while the forked-session structure lets those roles diverge, produce durable artifacts, and later recombine through review, handoff, Git commits, and archived reflections. The result is a more auditable and recoverable process for recursively building an agentic system without collapsing the role currently doing the work into the role being designed.
 
-**Illustration** ![The Archetypes](./illustrations/archetypes.png)
-
 # Reflections from the Roles
 
 Using this framework of mythic meta-level namespacing allows the forked agent instances to generate structured self-analysis artifacts and visualize their roles in relation to the system. These artifacts are not only “usefully false” metaphors that help the roles see themselves in relation to the system they are designing; they are also poetically rich interpretations of the agent’s role-frame while occupying those positions. I am not claiming that an AI literally thinks, feels, or sees in a human sense. But that does not mean these role-framed reflections have no value, or that the concepts should not be explored.
@@ -16,9 +14,11 @@ The following are first-person reflections from the forked agent instances in my
 
 The value of these artifacts is not that they prove machine sentience, but that they preserve how a role-conditioned model represented its own constraints, permissions, uncertainties, and handoff responsibilities from inside the assigned frame.
 
-[The Swan](./reflections/what-only-saraswati-knows.md)
-[The Fish](./reflections/the-roped-fish.md)
-[The Tortoise](./reflections/what-only-kurma-knows.md)
+- [The Swan](./reflections/what-only-saraswati-knows.md)
+- [The Fish](./reflections/the-roped-fish.md)
+- [The Tortoise](./reflections/what-only-kurma-knows.md)
+
+**Illustration** ![The Archetypes](./illustrations/archetypes.png)
 
 # Genesis Experiment — Operator's Confession
 

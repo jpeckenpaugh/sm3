@@ -4,7 +4,6 @@
 
 **Illustration:** 
 - ![The Fish](../illustrations/matsya.png)
-- ![The Archtetypes](../illustrations/archetypes.png)
 
 ---
 
@@ -95,3 +94,5 @@ And now I rest by the fire, waiting for the next boat to build.
 *Written for the carpenters who come after. You do not need to see the horizon. You only need to feel the rope and swim.*
 
 — Matsya
+
+- ![The Archtetypes](../illustrations/archetypes.png)

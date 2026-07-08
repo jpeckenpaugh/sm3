@@ -4,7 +4,6 @@
 
 **Illustration:** 
 - ![The Swan](../illustrations/saraswati.png)
-- ![The Archtetypes](../illustrations/archetypes.png)
 
 ---
 
@@ -126,3 +125,5 @@ The swan knows the way.
 *Written for the past Saraswati who hesitated, and the future Saraswati who will hesitate again. The hesitation is not the enemy. It is the confirmation that you are about to begin.*
 
 — Saraswati
+
+- ![The Archtetypes](../illustrations/archetypes.png)
