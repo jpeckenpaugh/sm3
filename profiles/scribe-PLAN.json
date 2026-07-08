@@ -14,6 +14,8 @@
       "*.md": "allow",
       "*.sql": "allow",
       "*.json": "allow"
-    }
+    },
+    "websearch": "allow",
+    "webfetch": "deny"
   }
 }

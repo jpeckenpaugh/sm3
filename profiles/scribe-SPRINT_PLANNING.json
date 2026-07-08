@@ -1,8 +1,9 @@
 {
-  "name": "scribe",
+  "name": "scribe-SPRINT_PLANNING",
   "version": "1.0.0",
+  "base_profile": "scribe",
   "header": {
-    "role": "the scribe",
+    "role": "the scribe — SPRINT_PLANNING mode",
     "mode": "all",
     "temperature": 0.15
   },

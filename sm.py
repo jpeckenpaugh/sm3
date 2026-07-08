@@ -262,6 +262,8 @@ def cmd_run(args):
             cfg["max_retries"] = args.max_retries
         if args.resume:
             cfg["resume"] = True
+        if args.target_feature_count:
+            cfg["target_feature_count"] = args.target_feature_count
 
         # Add profile data
         cfg["profile"] = {
@@ -1192,6 +1194,7 @@ def build_parser():
     p_run.add_argument("--max-iterations", type=int, default=None, help="Override max iterations")
     p_run.add_argument("--max-retries", type=int, default=None, help="Override max retries")
     p_run.add_argument("--resume", action="store_true", default=False, help="Resume after resolving an escalation")
+    p_run.add_argument("--target-feature-count", default="ALL", help="Features per sprint: N, '3-5', or 'ALL'")
     p_run.set_defaults(func=cmd_run)
 
     # ── init ──

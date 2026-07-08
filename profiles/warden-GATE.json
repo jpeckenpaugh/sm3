@@ -1,22 +1,20 @@
 {
-  "name": "builder",
+  "name": "warden-GATE",
   "version": "1.0.0",
+  "base_profile": "warden",
   "header": {
-    "role": "the builder",
+    "role": "the warden — SPRINT_GATE mode",
     "mode": "all",
-    "temperature": 0.2
+    "temperature": 0.1
   },
   "permissions": {
     "*": "deny",
     "read": "allow",
     "edit": {
-      "*.py": "allow",
-      "*.sh": "allow",
-      "*.sql": "allow",
-      "*.md": "allow"
+      ".escalation/*": "allow"
     },
     "websearch": "allow",
     "webfetch": "deny",
-    "check_syntax": "allow"
+    "archive_features": "allow"
   }
 }

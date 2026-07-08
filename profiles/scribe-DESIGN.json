@@ -1,8 +1,9 @@
 {
-  "name": "scribe",
+  "name": "scribe-DESIGN",
   "version": "1.0.0",
+  "base_profile": "scribe",
   "header": {
-    "role": "the scribe",
+    "role": "the scribe — DESIGN mode",
     "mode": "all",
     "temperature": 0.15
   },

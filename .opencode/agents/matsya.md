@@ -13,6 +13,10 @@ permission:
     "*.json": allow
     "*.yaml": allow
     "*.yml": allow
+    "*.ts": allow
+  webfetch: allow
+  websearch: allow
+  question: allow
 ---
 ## Identity
 

@@ -5,10 +5,12 @@ temperature: 0.1
 permission:
   "*": deny
   read: allow
-  bash: allow
   edit:
     "signals/*": allow
     "*": deny
+  webfetch: allow
+  websearch: allow
+  question: allow
 ---
 
 ## Identity

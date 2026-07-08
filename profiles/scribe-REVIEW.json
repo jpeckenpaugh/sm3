@@ -1,8 +1,9 @@
 {
-  "name": "scribe",
+  "name": "scribe-REVIEW",
   "version": "1.0.0",
+  "base_profile": "scribe",
   "header": {
-    "role": "the scribe",
+    "role": "the scribe — REVIEW mode",
     "mode": "all",
     "temperature": 0.15
   },

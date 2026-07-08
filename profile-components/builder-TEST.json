@@ -1,0 +1,6 @@
+{
+  "profile": "builder-TEST",
+  "components": [
+    { "type": "prompt", "name": "builder-mode-test", "order_idx": 0 }
+  ]
+}

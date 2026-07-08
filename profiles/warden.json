@@ -8,6 +8,8 @@
   },
   "permissions": {
     "*": "deny",
-    "read": "allow"
+    "read": "allow",
+    "websearch": "allow",
+    "webfetch": "deny"
   }
 }

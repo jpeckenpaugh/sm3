@@ -413,6 +413,7 @@ def run_pipeline(cfg: dict) -> None:
     ship_command = cfg.get("ship_command", "echo SHIPPING")
     sprint_number = cfg.get("sprint_number", sprint_id)
     resume_mode = cfg.get("resume", False)
+    target_feature_count = cfg.get("target_feature_count", "ALL")
 
     conn = sqlite3.connect(db_path)
     try:
@@ -481,7 +482,7 @@ def run_pipeline(cfg: dict) -> None:
                 # ── Agent dispatch or script resolution ─────────────────
                 agent_name = _resolve_agent_name(state, cfg)
 
-                if agent_name and state_name != "GATE" and state_name != "COMMIT":
+                if agent_name and state_name != "COMMIT":
                     # Agent dispatch path
                     print(f"  → Agent: {agent_name}")
                     log_phase_event(conn, sprint_id, state_name, iteration, 1,
@@ -506,6 +507,9 @@ def run_pipeline(cfg: dict) -> None:
                         request_text = build_request(
                             state_name, sprint_number, contracts,
                         )
+                        # Append target_feature_count for SPRINT_PLANNING
+                        if state_name == "SPRINT_PLANNING":
+                            request_text += f" COUNT:{target_feature_count}"
                         print(f"    Request: {request_text}")
 
                         # Step 3: Dispatch work

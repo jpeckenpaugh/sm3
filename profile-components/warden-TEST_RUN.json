@@ -1,0 +1,6 @@
+{
+  "profile": "warden-TEST_RUN",
+  "components": [
+    { "type": "prompt", "name": "warden-mode-test-run", "order_idx": 0 }
+  ]
+}

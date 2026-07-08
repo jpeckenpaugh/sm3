@@ -1,0 +1,21 @@
+{
+  "name": "warden-TEST_RUN",
+  "version": "1.0.0",
+  "base_profile": "warden",
+  "header": {
+    "role": "the warden — TEST_RUN mode",
+    "mode": "all",
+    "temperature": 0.1
+  },
+  "permissions": {
+    "*": "deny",
+    "read": "allow",
+    "edit": {
+      "*.md": "allow",
+      "sprint/*/test-report.md": "allow"
+    },
+    "websearch": "allow",
+    "webfetch": "deny",
+    "run_tests": "allow"
+  }
+}

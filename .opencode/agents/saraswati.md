@@ -6,6 +6,9 @@ permission:
   "*": deny
   read: allow
   edit: { "*.md": allow, "*.sql": allow, "*.json": allow }
+  websearch: allow
+  webfetch: allow
+  question: allow
 ---
 ## Identity
 

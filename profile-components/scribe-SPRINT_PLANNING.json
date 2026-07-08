@@ -1,0 +1,6 @@
+{
+  "profile": "scribe-SPRINT_PLANNING",
+  "components": [
+    { "type": "prompt", "name": "scribe-mode-sprint-planning", "order_idx": 0 }
+  ]
+}

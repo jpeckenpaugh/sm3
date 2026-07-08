@@ -1,0 +1,6 @@
+{
+  "profile": "warden-GATE",
+  "components": [
+    { "type": "prompt", "name": "warden-mode-gate", "order_idx": 0 }
+  ]
+}
