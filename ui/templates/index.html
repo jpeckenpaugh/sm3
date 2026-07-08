@@ -27,7 +27,10 @@
 
 {% if recent_events %}
 <div class="card">
-  <div class="card-header">Recent Events</div>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Recent Events</span>
+    <small class="text-secondary">Click an event row for details</small>
+  </div>
   <div class="card-body p-0">
     <table class="table table-sm table-striped table-hover mb-0">
       <thead class="table-dark">
@@ -40,7 +43,7 @@
       </thead>
       <tbody>
         {% for e in recent_events %}
-        <tr>
+        <tr style="cursor:pointer" data-event-type="{{ e.event_type|escape }}" data-phase="{{ e.phase|escape }}" data-ts="{{ e.created_at|escape }}" data-data="{{ e.event_data[:200]|escape }}" data-id="{{ e.id }}" onclick="showEventModal(this)">
           <td><small class="text-secondary">{{ e.created_at }}</small></td>
           <td><code>{{ e.phase }}</code></td>
           <td><span class="badge bg-info">{{ e.event_type }}</span></td>
@@ -54,4 +57,62 @@
 {% else %}
 <div class="alert alert-info">No events recorded yet.</div>
 {% endif %}
+
+<!-- Event detail modal -->
+<div class="modal fade" id="eventModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><span id="modalEventType"></span> &mdash; <code id="modalPhase"></code></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-secondary"><small id="modalTimestamp"></small></p>
+        <h6>Event Data</h6>
+        <pre id="modalEventData" class="json-block" style="max-height:30vh;overflow-y:auto;font-size:0.8rem;"></pre>
+        <div id="modalDispatchSection" style="display:none">
+          <hr>
+          <h6>Agent Dispatch</h6>
+          <p class="mb-1"><strong>Agent:</strong> <code id="modalAgentName"></code></p>
+          <p class="mb-1"><strong>Request:</strong></p>
+          <pre id="modalRequest" class="json-block" style="max-height:20vh;overflow-y:auto;font-size:0.75rem;"></pre>
+          <p class="mb-1 mt-2"><strong>Response:</strong></p>
+          <pre id="modalResponse" class="json-block" style="max-height:20vh;overflow-y:auto;font-size:0.75rem;"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showEventModal(row) {
+  var type = row.dataset.eventType;
+  var phase = row.dataset.phase;
+  var ts = row.dataset.ts;
+  var data = row.dataset.data;
+  var id = row.dataset.id;
+  document.getElementById('modalEventType').textContent = type;
+  document.getElementById('modalPhase').textContent = phase;
+  document.getElementById('modalTimestamp').textContent = ts;
+  try {
+    var parsed = JSON.parse(data);
+    document.getElementById('modalEventData').textContent = JSON.stringify(parsed, null, 2);
+  } catch(e) {
+    document.getElementById('modalEventData').textContent = data;
+  }
+  var section = document.getElementById('modalDispatchSection');
+  section.style.display = 'none';
+  fetch('/api/event-dispatch?event_id=' + id)
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.agent_name) {
+        section.style.display = 'block';
+        document.getElementById('modalAgentName').textContent = d.agent_name;
+        document.getElementById('modalRequest').textContent = d.request_text || '(empty)';
+        document.getElementById('modalResponse').textContent = d.response_text || '(empty)';
+      }
+    });
+  new bootstrap.Modal(document.getElementById('eventModal')).show();
+}
+</script>
 {% endblock %}

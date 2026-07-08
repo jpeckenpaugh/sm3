@@ -82,6 +82,33 @@ async def commit_diff(request: Request, hash: str = ""):
         "databases": dbs,
         "active_db_name": active,
     })
+@app.get("/api/event-dispatch")
+async def event_dispatch(request: Request, event_id: int = 0):
+    from db import get_db_path
+    import sqlite3
+    db_path = get_db_path()
+    if not db_path or not db_path.exists():
+        return {"agent_name": None}
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        # Get the event's phase and timestamp
+        ev = conn.execute("SELECT phase, event_type, created_at FROM phase_events WHERE id=?", (event_id,)).fetchone()
+        if not ev:
+            return {"agent_name": None}
+        # Find the nearest dispatch log entry
+        dl = conn.execute("""
+            SELECT agent_name, request_text, response_text FROM dispatch_log
+            WHERE abs(strftime('%%s', created_at) - strftime('%%s', ?)) < 10
+            ORDER BY abs(strftime('%%s', created_at) - strftime('%%s', ?))
+            LIMIT 1
+        """, (ev["created_at"], ev["created_at"])).fetchone()
+        if dl:
+            return {"agent_name": dl["agent_name"], "request_text": dl["request_text"], "response_text": dl["response_text"]}
+    finally:
+        conn.close()
+    return {"agent_name": None}
+
 @app.get("/files")
 async def files_page(request: Request):
     from git import get_git_status, get_git_log
