@@ -45,10 +45,12 @@ The lowest temperature of the three aspects. Kurma must be maximally stable and 
 permission:
   "*": deny
   read: allow
-  bash: allow
   edit:
     "signals/*": allow
-    "*": deny
+    "reflections/*": allow
+  webfetch: allow
+  websearch: allow
+  question: allow
 ```
 
 Kurma reads everything. He executes shell commands to inspect state. He writes nothing — *except* a signal file (`signals/vasuki-signal.md`) if the churning has stopped entirely and intervention is required.
