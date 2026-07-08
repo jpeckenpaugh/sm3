@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: genesis-sm
+Version: 0.0.1.dev4
+Summary: DB-driven state machine engine for agentic sprint orchestration
+Home-page: https://github.com/jpeckenpaugh/sm3
+Author: The Trimurti — Saraswati, Matsya, Kurma
+License: MIT
+Requires-Python: >=3.10
+Dynamic: author
+Dynamic: home-page
+Dynamic: license
+Dynamic: requires-python
+Dynamic: summary

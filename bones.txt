@@ -1,0 +1,88 @@
+jpeckenpaugh/sm3	State Machine 3	public	2026-07-08T18:16:32Z
+jpeckenpaugh/seekdepth.org	Seekdepth.org	public	2026-07-05T06:37:26Z
+jpeckenpaugh/seekdepth.net	Seekdepth.net Repo	private	2026-07-05T00:10:09Z
+jpeckenpaugh/fw-sm		private	2026-07-03T20:18:30Z
+jpeckenpaugh/genesis-container		private	2026-07-03T15:39:00Z
+jpeckenpaugh/the-framework-v0		private	2026-07-02T19:23:59Z
+jpeckenpaugh/steward-mode-2		private	2026-06-29T16:01:39Z
+jpeckenpaugh/game-pending	A simple html/js side-scroller gaming prototype. Designed to be extended via AI/ML tooling.	private	2026-06-27T10:31:43Z
+jpeckenpaugh/guanjia		private	2026-06-27T04:47:11Z
+jpeckenpaugh/ascendant-domains	Ascend the towers and fulfill your desinty. Will you do your part to unlock the power to unite the domains, or is the world already lost to the power of chaos?	private	2026-06-27T04:08:13Z
+jpeckenpaugh/roblox-api-database	A git-tracked database of official Roblox Client and Studio API dumps. Designed for offline engine schema lookup, static analysis, and programmatic validation in CI/CD pipelines. Automatically updated to track new class enums, properties, and events directly from CDN endpoints.	public	2026-06-26T15:17:00Z
+jpeckenpaugh/ascendant-domain	Ascend the towers and fulfill your desinty. Will you do your part to unlock the power to unite the domains, or is the world already lost to the power of chaos?	private	2026-06-26T02:29:01Z
+jpeckenpaugh/luau-rpg-bootstrap		private	2026-06-26T00:45:38Z
+jpeckenpaugh/roblox-llm-playbook		private	2026-06-24T16:33:00Z
+jpeckenpaugh/luau-bootstrap		private	2026-06-23T20:24:31Z
+jpeckenpaugh/luau-netwire-bootstrap	Production-grade, strictly typed Luau networking and modular bootstrap foundation for scalable Roblox games. Includes configuration-driven RemoteEvents, automatic server/client lifecycle discovery, diagnostic tooling, Rojo workflows, and validation support.	private	2026-06-22T17:50:19Z
+jpeckenpaugh/rojo-auto-init		private	2026-06-22T17:26:54Z
+jpeckenpaugh/roblox-template		private	2026-06-21T15:01:26Z
+jpeckenpaugh/roblox-game-foundation		private	2026-06-20T12:40:34Z
+jpeckenpaugh/roblox-tower		private	2026-06-20T08:10:40Z
+jpeckenpaugh/roblox-island		private	2026-06-19T05:13:40Z
+jpeckenpaugh/roblox-model-sandbox		private	2026-06-19T02:46:01Z
+jpeckenpaugh/roblox-wip-001		private	2026-06-16T11:11:30Z
+jpeckenpaugh/roblox-assets		private	2026-06-16T00:49:27Z
+jpeckenpaugh/mush-pygame		private	2026-06-15T06:19:14Z
+jpeckenpaugh/jpeckenpaugh.github.io		public	2026-06-13T11:32:24Z
+jpeckenpaugh/seekdepth-social	Simulate AI Social Network for language and culture study.	private	2026-06-11T03:46:41Z
+jpeckenpaugh/lumentera	Lumentera: Reclaim the Light	private	2026-06-02T07:00:54Z
+jpeckenpaugh/open-code-nvidia		private	2026-04-21T09:59:43Z
+jpeckenpaugh/EuchreGame	Simple Python based Euchre card game engine.	private	2026-04-18T07:28:21Z
+jpeckenpaugh/apertiasm-en-es	WASM build of Apertium with English/Spanish language installed.	private	2026-03-03T02:50:51Z
+jpeckenpaugh/python_classes	Python OOP demos using a food domain—showing inheritance, composition, and stateful rules through progressive examples.	public	2026-02-08T02:42:39Z
+jpeckenpaugh/lokarta	A modular engine for AI assisted world creation.	public	2026-01-29T22:55:33Z
+jpeckenpaugh/ai_chat_distil_01		private	2026-01-11T12:06:52Z
+jpeckenpaugh/ai_tts_poc_02		private	2026-01-08T16:47:53Z
+jpeckenpaugh/ai_tts_poc		private	2026-01-08T10:21:36Z
+jpeckenpaugh/seekdepth-game		private	2025-12-22T17:10:37Z
+jpeckenpaugh/keepsee_stack_v0		private	2025-12-17T13:19:00Z
+jpeckenpaugh/gate_keeper_harness		private, fork	2025-10-29T07:06:46Z
+jpeckenpaugh/keepsee_lexicon		private	2025-10-17T14:09:36Z
+jpeckenpaugh/head_liner_v4		private	2025-10-15T21:17:04Z
+jpeckenpaugh/hoptuit	A simple URL shortener. Who needs more?	private	2025-10-15T21:08:37Z
+jpeckenpaugh/wt-server		private	2025-10-15T07:20:04Z
+jpeckenpaugh/head_liner_js		private	2025-10-13T23:51:52Z
+jpeckenpaugh/keepsee_frontend	iOS App	private	2025-10-13T20:47:21Z
+jpeckenpaugh/dev_tools		private	2025-10-13T16:04:53Z
+jpeckenpaugh/ks_wip_02		private	2025-10-13T14:28:21Z
+jpeckenpaugh/keepsee_helpers		private	2025-10-13T13:22:05Z
+jpeckenpaugh/keepsee_services_v2		private	2025-10-13T13:21:49Z
+jpeckenpaugh/keepsee_video_helper		private	2025-10-13T09:56:57Z
+jpeckenpaugh/gemini_bootstrap	Customize the Gemini AI Agent CLI (https://github.com/google-gemini/gemini-cli) with persistent instructions, custom commands and session memory. Reduces context decay, role drift, and recall gaps for a more consistent and capable agent.	public	2025-10-12T05:27:42Z
+jpeckenpaugh/movie-py		private	2025-10-10T05:19:17Z
+jpeckenpaugh/ks_wip_01		private	2025-10-09T03:59:52Z
+jpeckenpaugh/gemini_journal		private	2025-10-06T02:07:21Z
+jpeckenpaugh/keepsee_alpha_demo		private	2025-10-05T10:10:38Z
+jpeckenpaugh/ks_mono		private	2025-10-05T07:23:10Z
+jpeckenpaugh/head_liner_v2		private	2025-10-03T03:08:37Z
+jpeckenpaugh/keepsee_services_v1		private	2025-10-02T02:32:38Z
+jpeckenpaugh/keepsee_service_config		private	2025-10-01T22:29:06Z
+jpeckenpaugh/keepsee_backlot_v2		private	2025-09-30T07:26:09Z
+jpeckenpaugh/keepsee_backlot_v1		private	2025-09-30T04:08:25Z
+jpeckenpaugh/keepsee_mono		private	2025-09-30T02:48:38Z
+jpeckenpaugh/keepsee_flask_v2		private	2025-09-30T00:19:11Z
+jpeckenpaugh/nexttext	nexttext is a lightweight Python toolkit for neutralizing explicit gendered terms in text. Via simple, fast heuristics it helps clean and standardize AI-generated labels, reducing model-induced misgendering and other unwanted linguistic artifacts. It's intended for use in AI pipelines, for both processing training data or filtering model outputs.	private	2025-09-29T13:08:04Z
+jpeckenpaugh/seekdepth-monitor	Simple system monitor with Rest API to support custom system dashboards and monitoring telemetry.	private	2025-09-28T09:20:34Z
+jpeckenpaugh/seekdepth-express		private	2025-09-28T09:19:52Z
+jpeckenpaugh/seekdepth-agent	A lightweight, modular FastAPI-based ops agent for monitoring services, capturing system stats, performing housekeeping, and exposing JSON endpoints for dashboards and automation.	private	2025-09-28T08:58:42Z
+jpeckenpaugh/keepsee_celery		private	2025-09-28T07:18:44Z
+jpeckenpaugh/keepsee_media_intake		private	2025-09-28T07:17:32Z
+jpeckenpaugh/keepsee_candidate_judge		private	2025-09-28T03:22:50Z
+jpeckenpaugh/mobile_app_sim	A simple/light weight client-side app to simulate basic frontend functionality to be used to test and validate the backend.	private	2025-09-28T00:32:56Z
+jpeckenpaugh/keepsee_v2	Keepsee Flask Backend	private	2025-09-27T05:17:22Z
+jpeckenpaugh/head_liner_v3		private	2025-09-27T04:28:38Z
+jpeckenpaugh/react_ai		private	2025-09-26T09:35:29Z
+jpeckenpaugh/fast_api		private	2025-09-26T06:40:47Z
+jpeckenpaugh/overlay_generator		private	2025-09-25T03:17:33Z
+jpeckenpaugh/keepsee_head_liner	Headliner is a microservice that detects recurring faces in video uploads, builds headshot galleries, lets users tag and rate individuals, and scores future videos based on who appears.	private	2025-09-23T15:21:44Z
+jpeckenpaugh/keepsee_intake_clerk	Keepsee.com Intake Clerk Media Processing Service	private	2025-09-23T12:14:59Z
+jpeckenpaugh/gcs_media_gate	A simple microservice to simulate the Firebase Cloud Storage client for testing & development.	private	2025-09-23T06:22:37Z
+jpeckenpaugh/keepsee_backend	Keepsee.com Mobile App Backend	private	2025-09-22T09:12:27Z
+jpeckenpaugh/fastapi_starter		private	2025-09-22T02:39:34Z
+jpeckenpaugh/keepsee_workers	Keepsee.com Worker Microservices.	private	2025-09-21T19:47:19Z
+jpeckenpaugh/keepsee-devops		private	2025-09-21T17:09:07Z
+jpeckenpaugh/keepsee-api		private	2025-09-20T12:33:46Z
+jpeckenpaugh/flask-sandbox-manager		private	2025-09-17T23:21:16Z
+jpeckenpaugh/flask-template	A simple Flask site template.	private	2025-09-17T19:17:32Z
+jpeckenpaugh/bjam_cp		private	2025-07-11T01:04:22Z
+jpeckenpaugh/dwarf	A O(1) URL shortener microservice backed by redis and gRPC communication.	public, fork	2024-09-11T13:50:43Z
