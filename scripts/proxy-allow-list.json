@@ -1,0 +1,13 @@
+{
+  "allowed_domains": [
+    "docs.python.org",
+    "pypi.org",
+    "fastapi.tiangolo.com",
+    "opencode.ai",
+    "raw.githubusercontent.com"
+  ],
+  "allowed_prefixes": [
+    "https://docs.python.org/",
+    "https://pypi.org/"
+  ]
+}

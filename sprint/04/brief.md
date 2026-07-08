@@ -149,7 +149,7 @@ Three derived profile rows:
 | File | Why |
 |------|-----|
 | `backlog/ft016-agent-dispatch.md` | Primary feature — the agent dispatch protocol |
-| `backlog/ft007-profile-inheritance.md` | Pulled forward — inheritance chain resolution |
+| `backlog/ft007b-profile-inheritance.md` | Pulled forward — inheritance chain resolution |
 | `signals/matsya-to-saraswati-silt-and-path.md` | Matsya's proposal on schema changes and build order |
 | `signals/kurma-to-matsya-the-fundamentals.md` | Kurma's seven fundamentals from the fallen machine |
 | `temp/others/sm/daemon.py` (lines 396–423, 654–704) | Proven code for handshake and dispatch |

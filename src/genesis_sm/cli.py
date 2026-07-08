@@ -510,6 +510,25 @@ def _deep_merge(base, override):
             base[key] = value
 
 
+def _safe_json_loads(value):
+    """Safely decode a value that may be double-encoded JSON.
+
+    The header/permissions columns in the database may be stored as
+    JSON-encoded strings that themselves contain JSON (double encoding).
+    Recursively decode until we get a dict or list.
+    """
+    if isinstance(value, (dict, list)):
+        return value
+    if isinstance(value, str):
+        try:
+            decoded = json.loads(value)
+            # If the result is still a string, decode again
+            return _safe_json_loads(decoded)
+        except (json.JSONDecodeError, TypeError):
+            return value
+    return value
+
+
 def _resolve_inheritance_chain(conn, profile_name):
     """Walk the base_profile chain from child to root.
 
@@ -585,19 +604,33 @@ def _assemble_components_for_profiles(conn, chain, profile_name=""):
     for profile_name, profile_id in chain:
         cursor = conn.cursor()
         cursor.execute(
-            """SELECT c.id, c.content, pc.order_idx
+            """SELECT c.id, c.content, pc.order_idx, pc.params
                FROM profile_components pc
                JOIN components c ON pc.component_id = c.id
                WHERE pc.profile_id = ?
                ORDER BY pc.order_idx""",
             (profile_id,),
         )
-        for cid, content, order_idx in cursor.fetchall():
+        for cid, content, order_idx, params_json in cursor.fetchall():
             if cid not in seen_component_ids:
                 seen_component_ids.add(cid)
                 # Substitute <MODE_FLAG> with the actual mode flag
                 if mode_flag:
                     content = content.replace("<MODE_FLAG>", mode_flag)
+                # Apply params: replace {{ key }} with param values
+                if params_json:
+                    import json as _j2
+                    try:
+                        params = _j2.loads(params_json)
+                        # Handle double-encoded JSON
+                        while isinstance(params, str):
+                            params = _j2.loads(params)
+                        if params and isinstance(params, dict):
+                            for key, value in params.items():
+                                content = content.replace("{{ " + key + " }}", str(value))
+                                content = content.replace("{{" + key + "}}", str(value))
+                    except (_j2.JSONDecodeError, TypeError):
+                        pass
                 ordered_components.append((order_idx, content))
 
     # Sort by order_idx
@@ -627,7 +660,9 @@ def cmd_generate_agent(args):
             sys.exit(1)
 
         profile_name, version, header_json, permissions_json = row
-        header = json.loads(header_json)
+        header = _safe_json_loads(header_json)
+        if not isinstance(header, dict):
+            header = {}
 
         # Resolve inheritance chain
         chain = _resolve_inheritance_chain(conn, args.name)
@@ -641,8 +676,9 @@ def cmd_generate_agent(args):
             )
             prow = cursor.fetchone()
             if prow and prow[0]:
-                parent_perms = json.loads(prow[0])
-                _deep_merge(permissions, parent_perms)
+                parent_perms = _safe_json_loads(prow[0])
+                if isinstance(parent_perms, dict):
+                    _deep_merge(permissions, parent_perms)
         body_parts = _assemble_components_for_profiles(conn, chain, args.name)
         assembled_body = "\n\n".join(body_parts)
 
@@ -1343,6 +1379,186 @@ def _permissions_to_yaml(perms, indent=0):
     return "\n".join(lines)
 
 
+# ─── Profile export / import ─────────────────────────────────────────────────
+
+def cmd_profile_export(args):
+    """Export all profiles, components, and profile_components to a JSON file."""
+    db_path = get_db_path(args.db, allow_missing=True)
+    if not db_path or not os.path.isfile(db_path):
+        print("No database found.")
+        sys.exit(1)
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Export profiles
+        cursor.execute("SELECT name, version, header, permissions, base_profile FROM profiles ORDER BY name")
+        profiles = [dict(r) for r in cursor.fetchall()]
+
+        # Export components
+        cursor.execute("SELECT type, name, content FROM components ORDER BY type, name")
+        components = [dict(r) for r in cursor.fetchall()]
+
+        # Export profile_components
+        cursor.execute("""SELECT p.name AS profile_name, c.type AS comp_type, c.name AS comp_name,
+                                 pc.order_idx, pc.params
+                          FROM profile_components pc
+                          JOIN profiles p ON pc.profile_id = p.id
+                          JOIN components c ON pc.component_id = c.id
+                          ORDER BY p.name, pc.order_idx""")
+        profile_components = [dict(r) for r in cursor.fetchall()]
+
+        export = {
+            "profiles": profiles,
+            "components": components,
+            "profile_components": profile_components,
+            "exported_at": _now_utc(),
+            "genesis_sm_version": genesis_sm.__version__,
+        }
+
+        output_path = args.output
+        with open(output_path, "w") as f:
+            json.dump(export, f, indent=2)
+        print(f"✓ Exported {len(profiles)} profiles, {len(components)} components, {len(profile_components)} links")
+        print(f"  Output: {output_path}")
+    finally:
+        conn.close()
+
+
+def cmd_profile_import(args):
+    """Import profiles, components, and profile_components from a JSON file."""
+    input_path = args.input
+    if not os.path.isfile(input_path):
+        print(f"✗ File not found: {input_path}")
+        sys.exit(1)
+
+    with open(input_path) as f:
+        data = json.load(f)
+
+    from genesis_sm.seed import upsert_profile, upsert_component, get_profile_id, get_component_id, upsert_profile_component
+
+    db_path = get_db_path(args.db, allow_missing=True)
+    conn = sqlite3.connect(db_path or "matsya.db")
+    try:
+        # Import profiles
+        imported_profiles = 0
+        for profile in data.get("profiles", []):
+            upsert_profile(conn, profile)
+            imported_profiles += 1
+
+        # Import components
+        imported_components = 0
+        for comp in data.get("components", []):
+            upsert_component(conn, comp)
+            imported_components += 1
+
+        # Import profile_components
+        imported_links = 0
+        for pc in data.get("profile_components", []):
+            pid = get_profile_id(conn, pc["profile_name"])
+            cid = get_component_id(conn, pc["comp_type"], pc["comp_name"])
+            if pid and cid:
+                upsert_profile_component(conn, pid, cid, pc.get("order_idx", 0), pc.get("params", {}))
+                imported_links += 1
+
+        conn.commit()
+        print(f"✓ Imported {imported_profiles} profiles, {imported_components} components, {imported_links} links")
+        if imported_links < len(data.get("profile_components", [])):
+            missing = len(data.get("profile_components", [])) - imported_links
+            print(f"  ⚠ {missing} profile-component links skipped (missing profile or component)")
+    finally:
+        conn.close()
+
+
+# ─── Profile variant creation (ft008) ────────────────────────────────────────
+
+def cmd_profile_variant(args):
+    """Create a new derived profile from an existing base profile."""
+    db_path = get_db_path(args.db, allow_missing=True)
+    conn = sqlite3.connect(db_path or "matsya.db")
+    try:
+        cursor = conn.cursor()
+
+        # 1. Validate base profile exists
+        cursor.execute("SELECT id, header, permissions FROM profiles WHERE name = ?", (args.base,))
+        base_row = cursor.fetchone()
+        if not base_row:
+            print(f"✗ Base profile '{args.base}' not found.")
+            sys.exit(1)
+        base_id, base_header_json, base_permissions_json = base_row
+
+        # 2. Check new profile name doesn't exist
+        cursor.execute("SELECT id FROM profiles WHERE name = ?", (args.name,))
+        if cursor.fetchone():
+            print(f"✗ Profile '{args.name}' already exists.")
+            sys.exit(1)
+
+        # 3. Create new profile row
+        mode_flag = args.mode
+        base_header = _safe_json_loads(base_header_json)
+        if not isinstance(base_header, dict):
+            base_header = {}
+        new_header = {
+            "role": f"the {args.base} — {mode_flag} mode",
+            "mode": "all",
+            "temperature": base_header.get("temperature", 0.1),
+        }
+        new_permissions = _safe_json_loads(base_permissions_json)
+        if not isinstance(new_permissions, dict):
+            new_permissions = {}
+
+        cursor.execute(
+            """INSERT INTO profiles (name, version, header, permissions, base_profile)
+               VALUES (?, '1.0.0', ?, ?, ?)""",
+            (args.name, json.dumps(new_header), json.dumps(new_permissions), args.base),
+        )
+        new_profile_id = cursor.lastrowid
+
+        # 4. Create mode-specific component
+        mode_component_name = f"{args.base}-mode-{mode_flag.lower()}"
+        cursor.execute(
+            """INSERT INTO components (type, name, content) VALUES ('prompt', ?, ?)""",
+            (mode_component_name, args.prompt),
+        )
+        new_component_id = cursor.lastrowid
+
+        # 5. Link via profile_components
+        params = {}
+        if args.params:
+            try:
+                params = json.loads(args.params)
+            except json.JSONDecodeError:
+                print(f"  ⚠ Invalid --params JSON, ignoring")
+        cursor.execute(
+            """INSERT INTO profile_components (profile_id, component_id, order_idx, params)
+               VALUES (?, ?, 0, ?)""",
+            (new_profile_id, new_component_id, json.dumps(params)),
+        )
+
+        conn.commit()
+        print(f"✓ Variant '{args.name}' created from base '{args.base}'")
+        print(f"  Mode: {mode_flag}")
+        print(f"  Component: {mode_component_name}")
+        if params:
+            print(f"  Params: {params}")
+
+        # 6. Generate agent file
+        try:
+            gen_args = argparse.Namespace(
+                name=args.name,
+                output_dir=args.output_dir or ".opencode/agents",
+                db=db_path,
+            )
+            cmd_generate_agent(gen_args)
+        except Exception as e:
+            print(f"  ⚠ Agent generation failed: {e}")
+            print(f"  Run 'sm generate agent {args.name}' manually")
+
+    finally:
+        conn.close()
+
+
 # ─── Argument parser ────────────────────────────────────────────────────────
 
 def build_parser():
@@ -1442,6 +1658,27 @@ def build_parser():
     p_projects_remove.add_argument("name", help="Project name to remove")
     p_projects_remove.set_defaults(func=cmd_projects)
 
+    # ── profile (export/import) ──
+    p_profile = subparsers.add_parser("profile", help="Manage profiles (export, import)")
+    p_profile_sub = p_profile.add_subparsers(dest="profile_action", help="Profile action")
+
+    p_profile_export = p_profile_sub.add_parser("export", help="Export all profiles to a JSON file")
+    p_profile_export.add_argument("--output", "-o", default="profiles-export.json", help="Output file path")
+    p_profile_export.set_defaults(func=cmd_profile_export)
+
+    p_profile_import = p_profile_sub.add_parser("import", help="Import profiles from a JSON file")
+    p_profile_import.add_argument("--input", "-i", required=True, help="Input file path")
+    p_profile_import.set_defaults(func=cmd_profile_import)
+
+    p_profile_variant = p_profile_sub.add_parser("variant", help="Create a new derived profile from a base")
+    p_profile_variant.add_argument("--base", required=True, help="Base profile name")
+    p_profile_variant.add_argument("--name", required=True, help="New profile name")
+    p_profile_variant.add_argument("--mode", required=True, help="Mode flag (e.g. FRONTEND)")
+    p_profile_variant.add_argument("--prompt", required=True, help="Mode-specific prompt content")
+    p_profile_variant.add_argument("--params", default=None, help="JSON params for profile_components")
+    p_profile_variant.add_argument("--output-dir", default=None, help="Output directory (default: .opencode/agents)")
+    p_profile_variant.set_defaults(func=cmd_profile_variant)
+
     # ── status ──
     p_status = subparsers.add_parser("status", help="Show current system state")
     p_status.add_argument("--backlog", default=None, help="Backlog directory or file path")
@@ -1502,6 +1739,10 @@ def main():
 
     if args.command == "projects" and args.projects_action is None:
         parser.parse_args(["projects", "--help"])
+        sys.exit(1)
+
+    if args.command == "profile" and args.profile_action is None:
+        parser.parse_args(["profile", "--help"])
         sys.exit(1)
 
     args.func(args)

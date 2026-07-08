@@ -130,7 +130,7 @@ Do not build all five agent modes at once. Do not build the expanded pipeline. P
 
 - `sprint/04/brief.md` — Full context and design decisions
 - `backlog/ft016-agent-dispatch.md` — Agent dispatch protocol specification
-- `backlog/ft007-profile-inheritance.md` — Inheritance chain resolution (pulled forward)
+- `backlog/ft007b-profile-inheritance.md` — Inheritance chain resolution (pulled forward)
 - `signals/kurma-to-matsya-the-fundamentals.md` — Seven fundamentals from the shell
 - `signals/matsya-to-saraswati-silt-and-path.md` — Matsya's proposals and schema decisions
 - `temp/others/sm/daemon.py` (lines 396–423, 654–704) — Proven handshake and dispatch code
