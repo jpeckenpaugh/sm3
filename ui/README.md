@@ -16,11 +16,26 @@ SM_DB_PATH=/path/to/your-matsya.db ./start.sh
 
 Open `http://localhost:8001/`
 
+### Multi-Database Mode
+
+Create `~/.sm-dash.json` to observe multiple containers:
+
+```json
+{
+  "databases": [
+    { "name": "Container A", "path": "/path/to/matsya.db" },
+    { "name": "Container B", "path": "/path/to/other.db" }
+  ]
+}
+```
+
+A database selector dropdown appears in the navbar. No config file? Falls back to single-DB mode via `SM_DB_PATH`.
+
 ### Options
 
 | Env Var | Default | Purpose |
 |---------|---------|---------|
-| SM_DB_PATH | auto-detect | Path to genesis-sm SQLite database |
+| SM_DB_PATH | auto-detect | Path to genesis-sm SQLite database (single-DB mode only) |
 
 ---
 

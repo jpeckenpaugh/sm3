@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-from db import query, query_one
+from db import query, query_one, list_databases, set_active_db
 from templates import templates
 
 app = FastAPI(title="genesis-sm Dashboard")
@@ -16,6 +17,20 @@ app.include_router(sprints.router)
 app.include_router(phases.router)
 app.include_router(dispatch.router)
 app.include_router(profiles.router)
+
+
+@app.on_event("startup")
+async def startup():
+    dbs = list_databases()
+    if dbs:
+        set_active_db(dbs[0]["name"])
+
+
+@app.get("/set_db")
+async def set_db(request: Request, name: str):
+    set_active_db(name)
+    referer = request.headers.get("referer", "/")
+    return RedirectResponse(url=referer)
 
 
 @app.get("/")

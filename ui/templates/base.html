@@ -12,13 +12,25 @@
     <div class="container-fluid">
       <a class="navbar-brand" href="/">genesis-sm</a>
       <div class="collapse navbar-collapse">
-        <ul class="navbar-nav">
+        <ul class="navbar-nav me-auto">
           <li class="nav-item"><a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">Status</a></li>
           <li class="nav-item"><a class="nav-link {% if '/sprints' in request.url.path %}active{% endif %}" href="/sprints">Sprints</a></li>
           <li class="nav-item"><a class="nav-link {% if '/phases' in request.url.path %}active{% endif %}" href="/phases">Phases</a></li>
           <li class="nav-item"><a class="nav-link {% if '/dispatch' in request.url.path %}active{% endif %}" href="/dispatch">Dispatch</a></li>
           <li class="nav-item"><a class="nav-link {% if '/profiles' in request.url.path %}active{% endif %}" href="/profiles">Profiles</a></li>
         </ul>
+        {% if databases %}
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            {{ active_db_name }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% for db in databases %}
+              <li><a class="dropdown-item {% if db.name == active_db_name %}active{% endif %}" href="/set_db?name={{ db.name | urlencode }}">{{ db.name }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
       </div>
     </div>
   </nav>

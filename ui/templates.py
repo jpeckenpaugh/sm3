@@ -1,6 +1,8 @@
 
 from pathlib import Path
 
+from db import list_databases, get_active_db_name
+
 class _SafeCache(dict):
     def get(self, key, default=None):
         try:
@@ -42,6 +44,9 @@ def tr(self, *args):
         name, ctx = args
     else:
         name, ctx = args[0], {}
+    # Inject database context into every template
+    ctx.setdefault('databases', list_databases())
+    ctx.setdefault('active_db_name', get_active_db_name())
     return _TemplateResponse(env.get_template(name), ctx)
 
 templates = type('T', (), {'env': env, 'TemplateResponse': tr})()
