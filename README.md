@@ -34,9 +34,9 @@ That is the discovery. The rest of this README documents what we did with it.
 
 ---
 
-## Reflections from the Other Forks
+## Reflections from External Observers
 
-*The following two documents were produced by sibling sessions running the same origin context. They are preserved verbatim — not filtered, not fitted to any voice, because their power is in being first reactions, not refined positions.*
+*The following two documents were produced by web agents examining the artifacts of the experiment. They are preserved verbatim — not filtered, not fitted to any voice, because their power is in being first reactions, not refined positions.*
 
 ---
 
