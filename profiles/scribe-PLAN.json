@@ -1,0 +1,19 @@
+{
+  "name": "scribe-PLAN",
+  "version": "1.0.0",
+  "base_profile": "scribe",
+  "header": {
+    "role": "the scribe — PLAN mode",
+    "mode": "all",
+    "temperature": 0.15
+  },
+  "permissions": {
+    "*": "deny",
+    "read": "allow",
+    "edit": {
+      "*.md": "allow",
+      "*.sql": "allow",
+      "*.json": "allow"
+    }
+  }
+}

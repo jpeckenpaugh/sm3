@@ -1,0 +1,6 @@
+{
+  "profile": "builder-ENGINEER",
+  "components": [
+    { "type": "prompt", "name": "builder-mode-engineer", "order_idx": 0 }
+  ]
+}

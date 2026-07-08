@@ -26,14 +26,25 @@ from state_machine import run_script, has_backlog, wait_for_signal
 from state_machine import log_phase_start, log_phase_end, complete_sprint
 
 from pipeline.events import log_phase_event
+from pipeline.dispatch import handshake_sync, dispatch_sync, build_request, record_dispatch
 
 
 # ─── DB loaders ───────────────────────────────────────────────────────────────
 
 def _load_states(conn: sqlite3.Connection) -> list[dict]:
     """Return all pipeline states ordered by id."""
-    cursor = conn.execute("SELECT id, name, description FROM pipeline_states ORDER BY id")
-    return [{"id": r[0], "name": r[1], "description": r[2]} for r in cursor.fetchall()]
+    cursor = conn.execute(
+        "SELECT id, name, description, agent_name FROM pipeline_states ORDER BY id"
+    )
+    return [
+        {
+            "id": r[0],
+            "name": r[1],
+            "description": r[2],
+            "agent_name": r[3] or "",
+        }
+        for r in cursor.fetchall()
+    ]
 
 
 def _load_transitions(conn: sqlite3.Connection) -> list[dict]:
@@ -230,6 +241,145 @@ def _check_escalations(state_name: str) -> Optional[dict]:
     return {"file": str(files[0].relative_to(".")), "content": content}
 
 
+# ─── Agent dispatch helpers ──────────────────────────────────────────────────
+
+def _resolve_agent_name(state: dict, cfg: dict) -> str:
+    """Determine the agent name to dispatch to for this state.
+
+    Priority:
+    1. pipeline_states.agent_name (full derived name from DB, e.g. 'scribe-PLAN')
+    2. profile_name + "-" + state_name (derived from the run's --profile)
+    3. empty string (no agent dispatch)
+    """
+    db_agent = state.get("agent_name", "") or ""
+    if db_agent.strip():
+        return db_agent.strip()
+
+    state_name = state.get("name", "")
+    profile_cfg = cfg.get("profile", {})
+    profile_name = profile_cfg.get("name", "")
+    if profile_name:
+        return f"{profile_name}-{state_name}"
+
+    return ""
+
+
+def _load_contracts(conn: sqlite3.Connection, state_name: str) -> list[dict]:
+    """Load file_contracts for a given state."""
+    cursor = conn.execute(
+        """SELECT direction, pattern, template, description, optional
+           FROM file_contracts
+           WHERE state_name = ?
+           ORDER BY direction, id""",
+        (state_name,),
+    )
+    return [
+        {
+            "direction": r[0],
+            "pattern": r[1],
+            "template": r[2] or "",
+            "description": r[3],
+            "optional": bool(r[4]),
+        }
+        for r in cursor.fetchall()
+    ]
+
+
+def _post_phase(
+    conn: sqlite3.Connection,
+    sprint_id: int,
+    state_name: str,
+    iteration: int,
+    attempt: int,
+    sprint_number: int,
+    cfg: dict,
+) -> None:
+    """Run post-phase hooks: contract verification and escalation check."""
+    # Contract verification (ft012)
+    if state_name != "GATE":
+        try:
+            contract_results = _verify_contracts(
+                conn, state_name, sprint_id, iteration, attempt
+            )
+            if sprint_number:
+                _write_contract_manifest(
+                    state_name, sprint_number, contract_results
+                )
+        except Exception as e:
+            print(f"  ⚠  Contract verification error: {e}")
+
+    # Escalation check (ft013)
+    escalation = _check_escalations(state_name)
+    if escalation:
+        print(f"  ⚑ Escalation: {escalation['file']}")
+        print(f"    {escalation['content'][:200]}")
+        log_phase_event(
+            conn, sprint_id, state_name, iteration, attempt,
+            "escalation_written",
+            f"{escalation['file']}: {escalation['content'][:100]}",
+        )
+        print(f"  → Sprint blocked. Resolve escalation and re-run with --resume.")
+        if sprint_id:
+            complete_sprint(conn, sprint_id, status="blocked")
+        sys.exit(1)
+
+
+def _finish_pipeline(conn: sqlite3.Connection, sprint_id: int) -> None:
+    """Mark the sprint as completed when the pipeline reaches a terminal state."""
+    print(f"\n  Pipeline complete (terminal state reached).")
+    if sprint_id:
+        complete_sprint(conn, sprint_id, status="completed")
+
+
+def _run_script_retry(
+    conn: sqlite3.Connection,
+    sprint_id: int,
+    state_name: str,
+    iteration: int,
+    script: str,
+    max_retries: int,
+    cfg: dict,
+) -> None:
+    """Run a phase script with retries, including phase_runs logging (Sprint 02)."""
+    for attempt in range(1, max_retries + 1):
+        print(f"     Attempt {attempt}/{max_retries}")
+        log_phase_event(conn, sprint_id, state_name, iteration, attempt,
+                        "phase_script_start", script)
+
+        run_id = None
+        if sprint_id:
+            run_id = log_phase_start(
+                conn, sprint_id, state_name, iteration, attempt,
+            )
+
+        success = run_script(script, state_name, iteration)
+
+        log_phase_event(conn, sprint_id, state_name, iteration, attempt,
+                        "phase_script_exit",
+                        f"exit_code={0 if success else 1}")
+
+        if sprint_id and run_id:
+            output = f"Phase {state_name} iter {iteration} attempt {attempt}"
+            if success:
+                log_phase_end(conn, run_id, True, output_summary=output)
+            else:
+                log_phase_end(conn, run_id, False, error=f"Script failed: {script}")
+
+        if success:
+            return
+        if attempt < max_retries:
+            print(f"     Retrying...")
+            log_phase_event(conn, sprint_id, state_name, iteration, attempt,
+                            "retry", f"attempt {attempt} failed, retrying")
+        else:
+            print(f"  ✗ Phase {state_name} failed after {max_retries} attempts.")
+
+    print(f"\n  ✗ Iteration {iteration} failed at phase {state_name}.")
+    if sprint_id:
+        complete_sprint(conn, sprint_id, status="failed")
+    sys.exit(1)
+
+
 # ─── The pipeline loop ──────────────────────────────────────────────────────
 
 def run_pipeline(cfg: dict) -> None:
@@ -328,7 +478,93 @@ def run_pipeline(cfg: dict) -> None:
                 log_phase_event(conn, sprint_id, state_name, iteration, 1,
                                 "phase_start", f"Entering {state_name}")
 
-                # Resolve script
+                # ── Agent dispatch or script resolution ─────────────────
+                agent_name = _resolve_agent_name(state, cfg)
+
+                if agent_name and state_name != "GATE" and state_name != "COMMIT":
+                    # Agent dispatch path
+                    print(f"  → Agent: {agent_name}")
+                    log_phase_event(conn, sprint_id, state_name, iteration, 1,
+                                    "agent_handshake_start", agent_name)
+
+                    try:
+                        # Step 1: Handshake
+                        handshake_result = handshake_sync(
+                            agent_name=agent_name,
+                            project_dir=os.getcwd(),
+                            timeout=cfg.get("agent_timeout", 120),
+                        )
+                        log_phase_event(conn, sprint_id, state_name, iteration, 1,
+                                        "agent_handshake_done",
+                                        f"session={handshake_result.session_id}")
+                        print(f"    Session: {handshake_result.session_id}")
+                        if handshake_result.confirmed_modes:
+                            print(f"    Modes: {', '.join(handshake_result.confirmed_modes)}")
+
+                        # Step 2: Build request text from contracts
+                        contracts = _load_contracts(conn, state_name)
+                        request_text = build_request(
+                            state_name, sprint_number, contracts,
+                        )
+                        print(f"    Request: {request_text}")
+
+                        # Step 3: Dispatch work
+                        log_phase_event(conn, sprint_id, state_name, iteration, 1,
+                                        "agent_dispatch_start", request_text[:200])
+                        dispatch_result = dispatch_sync(
+                            agent_name=agent_name,
+                            request_text=request_text,
+                            project_dir=os.getcwd(),
+                            timeout=cfg.get("agent_timeout", 600),
+                        )
+                        log_phase_event(conn, sprint_id, state_name, iteration, 1,
+                                        "agent_response",
+                                        dispatch_result.response_text[:200])
+
+                        # Record dispatch
+                        record_dispatch(
+                            conn, sprint_id,
+                            handshake_result.session_id,
+                            agent_name, request_text,
+                            dispatch_result.response_text,
+                            status="completed",
+                        )
+                        print(f"    Response: {len(dispatch_result.response_text)} chars")
+
+                    except Exception as e:
+                        log_phase_event(conn, sprint_id, state_name, iteration, 1,
+                                        "agent_error", str(e))
+                        print(f"  ✗ Agent dispatch failed: {e}")
+                        script = _resolve_script(state_name, cfg)
+                        if script:
+                            print(f"  → Falling back to script: {script}")
+                            _run_script_retry(conn, sprint_id, state_name,
+                                              iteration, script, max_retries, cfg)
+                            _post_phase(conn, sprint_id, state_name, iteration,
+                                        1, sprint_number, cfg)
+                            current_state = _advance(state_name, transitions,
+                                                     name_to_id, id_to_name, ctx)
+                            if current_state is None:
+                                _finish_pipeline(conn, sprint_id)
+                                return
+                            continue
+                        else:
+                            print(f"  ✗ No fallback script for {state_name}")
+                            sys.exit(1)
+
+                    # Post-dispatch hooks
+                    _post_phase(conn, sprint_id, state_name, iteration,
+                                1, sprint_number, cfg)
+                    log_phase_event(conn, sprint_id, state_name, iteration, 1,
+                                    "phase_end", "passed (agent dispatch)")
+                    current_state = _advance(state_name, transitions,
+                                             name_to_id, id_to_name, ctx)
+                    if current_state is None:
+                        _finish_pipeline(conn, sprint_id)
+                        return
+                    continue
+
+                # ── Script path (fallback when no agent) ────────────────
                 script = _resolve_script(state_name, cfg)
 
                 if script is None:
@@ -375,78 +611,13 @@ def run_pipeline(cfg: dict) -> None:
                             return
                 else:
                     # ── Regular phase: retry loop ──────────────────────────
-                    success = False
-                    for attempt in range(1, max_retries + 1):
-                        print(f"     Attempt {attempt}/{max_retries}")
-                        log_phase_event(conn, sprint_id, state_name, iteration, attempt,
-                                        "phase_script_start", script)
+                    _run_script_retry(conn, sprint_id, state_name, iteration,
+                                      script, max_retries, cfg)
 
-                        run_id = None
-                        if sprint_id:
-                            run_id = log_phase_start(
-                                conn, sprint_id, state_name, iteration, attempt
-                            )
+                # ── Post-phase hooks ──────────────────────────────────────
+                _post_phase(conn, sprint_id, state_name, iteration, 1,
+                            sprint_number, cfg)
 
-                        success = run_script(script, state_name, iteration)
-
-                        log_phase_event(conn, sprint_id, state_name, iteration, attempt,
-                                        "phase_script_exit",
-                                        f"exit_code={0 if success else 1}")
-
-                        if sprint_id and run_id:
-                            output = f"Phase {state_name} iter {iteration} attempt {attempt}"
-                            if success:
-                                log_phase_end(conn, run_id, True, output_summary=output)
-                            else:
-                                log_phase_end(
-                                    conn, run_id, False,
-                                    error=f"Script failed: {script}",
-                                )
-
-                        if success:
-                            break
-                        if attempt < max_retries:
-                            print(f"     Retrying...")
-                            log_phase_event(conn, sprint_id, state_name, iteration, attempt,
-                                            "retry", f"attempt {attempt} failed, retrying")
-                        else:
-                            print(f"  ✗ Phase {state_name} failed after {max_retries} attempts.")
-
-                    if not success:
-                        print(f"\n  ✗ Iteration {iteration} failed at phase {state_name}.")
-                        if sprint_id:
-                            complete_sprint(conn, sprint_id, status="failed")
-                        sys.exit(1)
-
-                # ── Contract verification (ft012) ──────────────────────────
-                if state_name != "GATE":
-                    try:
-                        contract_results = _verify_contracts(
-                            conn, state_name, sprint_id, iteration, 1
-                        )
-                        if sprint_number:
-                            _write_contract_manifest(
-                                state_name, sprint_number, contract_results
-                            )
-                    except Exception as e:
-                        print(f"  ⚠  Contract verification error: {e}")
-
-                # ── Escalation check (ft013) ──────────────────────────────
-                escalation = _check_escalations(state_name)
-                if escalation:
-                    print(f"  ⚑ Escalation: {escalation['file']}")
-                    print(f"    {escalation['content'][:200]}")
-                    log_phase_event(
-                        conn, sprint_id, state_name, iteration, 1,
-                        "escalation_written",
-                        f"{escalation['file']}: {escalation['content'][:100]}",
-                    )
-                    print(f"  → Sprint blocked. Resolve escalation and re-run with --resume.")
-                    if sprint_id:
-                        complete_sprint(conn, sprint_id, status="blocked")
-                    return
-
-                # Log phase end event
                 log_phase_event(conn, sprint_id, state_name, iteration, 1,
                                 "phase_end", "passed")
 
@@ -454,11 +625,7 @@ def run_pipeline(cfg: dict) -> None:
                 current_state = _advance(state_name, transitions,
                                          name_to_id, id_to_name, ctx)
                 if current_state is None:
-                    print(f"\n  Pipeline complete (terminal state reached).")
-                    log_phase_event(conn, sprint_id, state_name, iteration, 1,
-                                    "phase_end", "pipeline complete (terminal)")
-                    if sprint_id:
-                        complete_sprint(conn, sprint_id, status="completed")
+                    _finish_pipeline(conn, sprint_id)
                     return
 
             iteration += 1

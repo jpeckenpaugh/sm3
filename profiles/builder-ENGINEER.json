@@ -1,0 +1,22 @@
+{
+  "name": "builder-ENGINEER",
+  "version": "1.0.0",
+  "base_profile": "builder",
+  "header": {
+    "role": "the builder — ENGINEER mode",
+    "mode": "all",
+    "temperature": 0.2
+  },
+  "permissions": {
+    "*": "deny",
+    "read": "allow",
+    "edit": {
+      "*.py": "allow",
+      "*.sh": "allow",
+      "*.sql": "allow",
+      "*.md": "allow",
+      "*.txt": "allow",
+      ".gitignore": "allow"
+    }
+  }
+}

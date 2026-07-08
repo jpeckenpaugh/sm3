@@ -1,0 +1,6 @@
+{
+  "profile": "scribe-PLAN",
+  "components": [
+    { "type": "prompt", "name": "scribe-mode-plan", "order_idx": 0 }
+  ]
+}

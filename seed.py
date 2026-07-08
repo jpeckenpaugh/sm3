@@ -48,19 +48,44 @@ def ensure_schema(conn, schema_path):
     conn.executescript(sql)
     conn.commit()
 
+    # Sprint 04: Apply ALTER TABLE ADD COLUMN statements idempotently.
+    # These will fail silently if the column already exists.
+    alter_statements = [
+        "ALTER TABLE profiles ADD COLUMN base_profile TEXT REFERENCES profiles(name)",
+        "ALTER TABLE pipeline_states ADD COLUMN agent_name TEXT DEFAULT ''",
+        "ALTER TABLE file_contracts ADD COLUMN template TEXT DEFAULT ''",
+    ]
+    for stmt in alter_statements:
+        try:
+            conn.execute(stmt)
+            conn.commit()
+        except Exception:
+            pass  # Column already exists
+
 
 def upsert_profile(conn, profile):
     """Insert or update a profile row, matched on name."""
     cursor = conn.cursor()
+
+    # Handle base_profile for profile inheritance (Sprint 04 / ft007)
+    base_profile = profile.get("base_profile")
+
+    # Ensure base profile reference exists if specified
+    if base_profile:
+        cursor.execute("SELECT id FROM profiles WHERE name = ?", (base_profile,))
+        if not cursor.fetchone():
+            print(f"  ⚠  Base profile '{base_profile}' not found for '{profile['name']}' — ignoring")
+
     cursor.execute(
-        """INSERT INTO profiles (name, version, header, permissions, preamble, body)
-           VALUES (?, ?, ?, ?, ?, ?)
+        """INSERT INTO profiles (name, version, header, permissions, preamble, body, base_profile)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(name) DO UPDATE SET
                version = excluded.version,
                header = excluded.header,
                permissions = excluded.permissions,
                preamble = excluded.preamble,
                body = excluded.body,
+               base_profile = excluded.base_profile,
                updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')""",
         (
             profile["name"],
@@ -69,6 +94,7 @@ def upsert_profile(conn, profile):
             json.dumps(profile.get("permissions", {})),
             profile.get("preamble", ""),
             profile.get("body", ""),
+            base_profile,
         ),
     )
     conn.commit()

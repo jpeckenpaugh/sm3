@@ -28,10 +28,25 @@ def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
 
     # Build a name→id map so we can reference states in transitions
     state_ids = {}
+    # Define agent names for states that dispatch to an agent
+    # agent_name stores the full derived profile name (base-MODE).
+    # The engine uses this directly — no state suffix appended.
+    agent_names = {
+        "PLAN":   "scribe-PLAN",
+        "WRITE":  "builder-ENGINEER",
+        "REVIEW": "warden-REVIEW",
+        "COMMIT": "",    # script-based, no agent
+        "GATE":   "",    # script-based, no agent
+    }
+
     for name, desc in states:
+        agent = agent_names.get(name, "")
         cursor.execute(
-            "INSERT OR IGNORE INTO pipeline_states (name, description) VALUES (?, ?)",
-            (name, desc),
+            """INSERT INTO pipeline_states (name, description, agent_name) VALUES (?, ?, ?)
+               ON CONFLICT(name) DO UPDATE SET
+                   description = excluded.description,
+                   agent_name = excluded.agent_name""",
+            (name, desc, agent),
         )
     # Fetch actual IDs (they may already exist from a previous seed)
     for name, _ in states:
@@ -63,24 +78,32 @@ def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
         )
 
     # ── file_contracts ───────────────────────────────────────────────────
+    # pattern = glob for post-dispatch verification
+    # template = {:03d} format for dispatch-time path resolution (empty = use pattern)
     contracts = [
-        ("PLAN",   "output", "sprint/*/brief.md",     "Sprint brief document", 0),
-        ("WRITE",  "input",  "sprint/*/brief.md",     "Sprint brief", 0),
-        ("WRITE",  "output", "sprint/*/features.md",  "Feature list", 0),
-        ("WRITE",  "output", "src/**/*",              "Source files", 1),
-        ("REVIEW", "input",  "sprint/*/features.md",  "Feature list", 0),
-        ("REVIEW", "input",  "src/**/*",              "Source files", 1),
-        ("REVIEW", "output", "sprint/*/review.md",    "Review report", 0),
-        ("GATE",   "input",  "backlog/**/*",          "Backlog features", 1),
-        ("GATE",   "input",  "sprint/*/**/*",         "Sprint artifacts", 1),
+        # PLAN reads concept.md, writes backlog + brief
+        ("PLAN",   "input",  "concept.md",         "concept.md",                    "Project concept document", 0),
+        ("PLAN",   "output", "backlog/*",           "backlog/*",                     "Backlog feature files", 0),
+        ("PLAN",   "output", "sprint/{:03d}/brief.md", "sprint/{:03d}/brief.md",    "Sprint brief document", 0),
+        # WRITE reads sprint brief + docs, writes source code + dependencies
+        ("WRITE",  "input",  "sprint/{:03d}/*",     "sprint/{:03d}/*",              "Sprint artifacts", 0),
+        ("WRITE",  "output", "src/*",               "src/*",                         "Source files", 0),
+        ("WRITE",  "output", "requirements.txt",    "requirements.txt",              "Dependency manifest", 0),
+        # REVIEW reads brief + source, writes review report
+        ("REVIEW", "input",  "sprint/{:03d}/brief.md", "sprint/{:03d}/brief.md",    "Sprint brief", 0),
+        ("REVIEW", "input",  "src/*",               "src/*",                         "Source files", 0),
+        ("REVIEW", "output", "sprint/{:03d}/review.md", "sprint/{:03d}/review.md",  "Review report", 0),
+        # GATE reads backlog + sprint artifacts
+        ("GATE",   "input",  "backlog/**/*",         "",                             "Backlog features", 1),
+        ("GATE",   "input",  "sprint/*/**/*",        "",                             "Sprint artifacts", 1),
     ]
 
-    for state_name, direction, pattern, desc, optional in contracts:
+    for state_name, direction, pattern, template, desc, optional in contracts:
         cursor.execute(
             """INSERT OR IGNORE INTO file_contracts
-               (state_name, direction, pattern, description, optional)
-               VALUES (?, ?, ?, ?, ?)""",
-            (state_name, direction, pattern, desc, optional),
+               (state_name, direction, pattern, template, description, optional)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (state_name, direction, pattern, template, desc, optional),
         )
 
     conn.commit()

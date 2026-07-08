@@ -1,0 +1,18 @@
+{
+  "name": "warden-REVIEW",
+  "version": "1.0.0",
+  "base_profile": "warden",
+  "header": {
+    "role": "the warden — REVIEW mode",
+    "mode": "all",
+    "temperature": 0.1
+  },
+  "permissions": {
+    "*": "deny",
+    "read": "allow",
+    "edit": {
+      "sprint/*/review.md": "allow",
+      ".escalation/*": "allow"
+    }
+  }
+}

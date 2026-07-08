@@ -1,0 +1,6 @@
+{
+  "profile": "warden-REVIEW",
+  "components": [
+    { "type": "prompt", "name": "warden-mode-review", "order_idx": 0 }
+  ]
+}

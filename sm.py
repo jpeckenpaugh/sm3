@@ -482,8 +482,67 @@ def cmd_status(args):
 
 # ─── Command: generate agent ────────────────────────────────────────────────
 
+def _resolve_inheritance_chain(conn, profile_name):
+    """Walk the base_profile chain from child to root.
+
+    Returns list of (profile_name, profile_id) from root to child.
+    """
+    chain = []
+    current = profile_name
+    seen = set()
+    while current and current not in seen:
+        seen.add(current)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, base_profile FROM profiles WHERE name = ?",
+            (current,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            break
+        pid, base = row
+        chain.insert(0, (current, pid))  # root first
+        current = base
+    return chain
+
+
+def _assemble_components_for_profiles(conn, chain):
+    """Collect components across an inheritance chain.
+
+    Walks from root to child, collecting profile_components in order.
+    Child components with the same component_id override parent ones.
+
+    Returns list of component content strings in assembly order.
+    """
+    seen_component_ids = set()
+    ordered_components = []  # list of (order_idx, content)
+
+    for profile_name, profile_id in chain:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT c.id, c.content, pc.order_idx
+               FROM profile_components pc
+               JOIN components c ON pc.component_id = c.id
+               WHERE pc.profile_id = ?
+               ORDER BY pc.order_idx""",
+            (profile_id,),
+        )
+        for cid, content, order_idx in cursor.fetchall():
+            if cid not in seen_component_ids:
+                seen_component_ids.add(cid)
+                ordered_components.append((order_idx, content))
+
+    # Sort by order_idx
+    ordered_components.sort(key=lambda x: x[0])
+    return [content for _, content in ordered_components if content]
+
+
 def cmd_generate_agent(args):
-    """Render a profile as an OpenCode agent markdown file."""
+    """Render a profile as an OpenCode agent markdown file.
+
+    Supports profile inheritance — walks the base_profile chain
+    and merges components from all ancestors.
+    """
     conn = get_conn(args.db)
     try:
         cursor = conn.cursor()
@@ -503,18 +562,9 @@ def cmd_generate_agent(args):
         header = json.loads(header_json)
         permissions = json.loads(permissions_json)
 
-        # 2. Assemble components in order
-        cursor.execute(
-            """SELECT c.content
-               FROM profile_components pc
-               JOIN components c ON pc.component_id = c.id
-               JOIN profiles p ON pc.profile_id = p.id
-               WHERE p.name = ?
-               ORDER BY pc.order_idx""",
-            (args.name,),
-        )
-        component_rows = cursor.fetchall()
-        body_parts = [row[0] for row in component_rows if row[0]]
+        # 2. Resolve inheritance chain and assemble components
+        chain = _resolve_inheritance_chain(conn, args.name)
+        body_parts = _assemble_components_for_profiles(conn, chain)
         assembled_body = "\n\n".join(body_parts)
 
         # 3. Build agent markdown
@@ -522,7 +572,6 @@ def cmd_generate_agent(args):
         mode = header.get("mode", "all")
         temperature = header.get("temperature", 0.1)
 
-        # Build permission YAML manually (no PyYAML dependency)
         permission_yaml = _permissions_to_yaml(permissions, indent=0)
 
         agent_md = f"""---
@@ -544,9 +593,11 @@ permission:
         with open(output_path, "w") as f:
             f.write(agent_md)
 
+        chain_names = " → ".join(n for n, _ in chain)
         print(f"✓ Generated agent file: {output_path}")
         print(f"  Profile: {profile_name} v{version}")
-        print(f"  Components: {len(component_rows)} assembled")
+        print(f"  Inheritance: {chain_names}")
+        print(f"  Components: {len(body_parts)} assembled")
 
     finally:
         conn.close()

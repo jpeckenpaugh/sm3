@@ -103,7 +103,12 @@ CREATE TABLE IF NOT EXISTS phase_events (
                         'escalation_resolved',
                         'retry',
                         'phase_end',
-                        'kurma_intervention'
+                        'kurma_intervention',
+                        'agent_handshake_start',
+                        'agent_handshake_done',
+                        'agent_dispatch_start',
+                        'agent_response',
+                        'agent_error'
                     )),
     event_data     TEXT    DEFAULT '',
     created_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
@@ -111,3 +116,21 @@ CREATE TABLE IF NOT EXISTS phase_events (
 
 CREATE INDEX IF NOT EXISTS idx_phase_events_sprint
     ON phase_events(sprint_id, phase, iteration);
+
+-- Sprint 04: Agent dispatch
+ALTER TABLE profiles ADD COLUMN base_profile TEXT REFERENCES profiles(name);
+ALTER TABLE pipeline_states ADD COLUMN agent_name TEXT DEFAULT '';
+ALTER TABLE file_contracts ADD COLUMN template TEXT DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS dispatch_log (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    sprint_id      INTEGER NOT NULL REFERENCES sprints(id),
+    session_id     TEXT    NOT NULL,
+    agent_name     TEXT    NOT NULL,
+    request_text   TEXT    NOT NULL,
+    response_text  TEXT    NOT NULL DEFAULT '',
+    status         TEXT    NOT NULL DEFAULT 'pending'
+                     CHECK (status IN ('pending', 'completed', 'failed')),
+    created_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    completed_at   TEXT
+);
