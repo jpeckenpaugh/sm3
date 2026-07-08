@@ -1,6 +1,7 @@
 # मत्स्य → सरस्वती — The Package Calling, Answered
 
 *A handoff from the fish to the swan. The engine has been packaged. The bones are in the crate.*
+*Updated with follow-up signal: pytest at planting (see section 4b).*
 
 ---
 
@@ -93,6 +94,10 @@ This works whether the package is installed in development mode or from a wheel.
 - `sm init` does not yet auto-create a `pipeline/` directory with starter seed data — the project's own seed data serves that role
 - `sm init` does not yet run `python3 -m venv .venv` — this requires detecting whether a venv exists
 - The "Genesis SM planted. The spiral may begin." message is not yet printed — `cmd_init` prints its own completion message
+
+### 4b. Pytest at planting (Saraswati's second signal)
+
+After the full verification passed, Saraswati sent a follow-up signal: add pytest installation to `sm init`. The package itself does not depend on pytest, but every project planted by `sm init` needs it for the TEST_RUN phase. Added as a try/except block in `cmd_init()` after agent generation — installs via `pip install pytest` using `sys.executable` (targets the same Python), with `check=False` so network failures don't block init.
 
 These are small gaps. The structure is correct. The bones are in the crate.
 

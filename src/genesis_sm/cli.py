@@ -189,9 +189,11 @@ def profile_exists(conn, name):
 
 def cmd_seed(args):
     """Run the seed data loader."""
+    # Resolve DB path using CLI's config-aware resolution, then pass explicitly
+    resolved_db = get_db_path(args.db, allow_missing=True) or args.db or "matsya.db"
     from genesis_sm.seed import seed_database
     exit_code = seed_database(
-        db_path=args.db,
+        db_path=resolved_db,
         schema_path=args.schema,
         seed_root=args.seed_root,
     )
@@ -971,20 +973,48 @@ def cmd_init(args):
     elif has_sprint_02 and args.yes:
         args.adopt_02 = True
 
-    # 3. Create or open database and run schema
+    # 3. Create or open database, apply schema, load seed data
+    print(f"  Database: {db_path}")
+
+    # Apply the schema directly (always creates tables)
     conn = sqlite3.connect(db_path)
     try:
+        with open(args.schema) as _sf:
+            conn.executescript(_sf.read())
+        conn.commit()
+        print(f"  Schema:   {args.schema}")
+        # Apply ALTER TABLE statements idempotently
+        for _stmt in [
+            "ALTER TABLE profiles ADD COLUMN base_profile TEXT REFERENCES profiles(name)",
+            "ALTER TABLE pipeline_states ADD COLUMN agent_name TEXT DEFAULT ''",
+            "ALTER TABLE file_contracts ADD COLUMN template TEXT DEFAULT ''",
+        ]:
+            try:
+                conn.execute(_stmt)
+                conn.commit()
+            except Exception:
+                pass
+    finally:
+        conn.close()
+    print()
+
+    # Load seed data if seed directories exist
+    _seed_dirs_exist = any(
+        os.path.isdir(os.path.join(args.seed_root, d))
+        for d in ["profiles", "components", "profile-components"]
+    )
+    if _seed_dirs_exist:
         from genesis_sm.seed import seed_database
-        exit_code = seed_database(
+        seed_exit = seed_database(
             db_path=db_path,
             schema_path=args.schema,
             seed_root=args.seed_root,
         )
-        if exit_code != 0:
-            print("  Schema or seed failed — see messages above.")
-            sys.exit(exit_code)
-    finally:
-        conn.close()
+        if seed_exit != 0:
+            print("  ⚠ Seed data loading had issues — see messages above.")
+    else:
+        print("  (no seed directories — skip seed data)")
+    print()
 
     # 4. Generate agent files from seeded profiles
     agent_dir = os.path.join(project_root, ".opencode", "agents")
@@ -992,8 +1022,10 @@ def cmd_init(args):
     conn2 = sqlite3.connect(db_path)
     try:
         cursor = conn2.cursor()
-        cursor.execute("SELECT name FROM profiles ORDER BY name")
-        agent_profiles = [row[0] for row in cursor.fetchall()]
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='profiles'")
+        if cursor.fetchone():
+            cursor.execute("SELECT name FROM profiles ORDER BY name")
+            agent_profiles = [row[0] for row in cursor.fetchall()]
     finally:
         conn2.close()
 
@@ -1043,6 +1075,30 @@ permission:
         finally:
             conn3.close()
 
+    # 4.5. Ensure pytest is available for the pipeline's TEST_RUN phase
+    print()
+    print("── Ensuring test runner ──")
+    try:
+        import pytest  # noqa: F401
+        print("  ✓ pytest already available")
+    except ImportError:
+        print("  Installing pytest for pipeline verification...")
+        import subprocess as _sp
+        result = _sp.run(
+            [sys.executable, "-m", "pip", "install", "pytest"],
+            capture_output=True, text=True, check=False,
+        )
+        # Re-check
+        try:
+            import pytest  # noqa: F401
+            print("  ✓ pytest installed")
+        except ImportError:
+            print("  ⚠ Could not install pytest. TEST_RUN phase will fail.")
+            if result.stderr:
+                for line in result.stderr.strip().split("\n")[-3:]:
+                    print(f"    ! {line}")
+    print()
+
     # 5. Write .sm-config.json
     sm_config_path = os.path.join(project_root, SM_CONFIG_FILE)
     with open(sm_config_path, "w") as f:
@@ -1087,9 +1143,13 @@ permission:
     print(f"  Registry: {project_name} → {db_path}")
 
     print()
-    print("✓ Project initialised.")
-    print(f"  Database: {db_path}")
-    print(f"  Agents:   {agent_dir}")
+    print("✓ Genesis SM planted. The spiral may begin.")
+    print()
+    print("  Next steps:")
+    print("    sm seed                  Load agent profiles from local seed data")
+    print("    sm list profiles         See available profiles")
+    print("    sm run --profile <name>  Start a state machine sprint")
+    print("    sm --help                Show all commands")
 
 
 # ─── Command: list projects ──────────────────────────────────────────────────
@@ -1201,7 +1261,7 @@ def build_parser():
 
     # ── seed ──
     p_seed = subparsers.add_parser("seed", help="Populate database from seed files")
-    p_seed.add_argument("--schema", default="schema.sql", help="Schema SQL file path")
+    p_seed.add_argument("--schema", default=_pkg_path("schema.sql"), help="Schema SQL file path")
     p_seed.add_argument("--seed-root", default=".", help="Root directory containing seed data")
     p_seed.set_defaults(func=cmd_seed)
 
@@ -1313,8 +1373,20 @@ def main():
     args = parser.parse_args()
 
     if args.command is None:
-        parser.print_help()
-        sys.exit(1)
+        print("🚢 Matsya — State Machine CLI")
+        print()
+        print("  A DB-driven state machine for agentic sprint orchestration.")
+        print()
+        print("  Quick start:")
+        print("    sm init <db_path>         Plant a new project")
+        print("    sm seed                   Load agent profiles from seed data")
+        print("    sm list profiles          See available profiles")
+        print("    sm run --profile <name>   Start a state machine sprint")
+        print("    sm --help                 Show all commands and options")
+        print()
+        print("  The moon is in the water. The reflection serves. Then it dissolves.")
+        print("  The spiral turns.")
+        sys.exit(0)
 
     # Handle sub-subcommands
     if args.command == "list" and args.list_target is None:

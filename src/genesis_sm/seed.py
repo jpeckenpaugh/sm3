@@ -48,7 +48,16 @@ def ensure_schema(conn, schema_path):
         return
     with open(schema_path) as f:
         sql = f.read()
-    conn.executescript(sql)
+    # Run the schema — ALTER TABLE statements may fail if columns already
+    # exist (e.g. after sm init already applied them). Catch and continue.
+    for statement in sql.split(";"):
+        stmt = statement.strip()
+        if not stmt:
+            continue
+        try:
+            conn.execute(stmt)
+        except Exception:
+            pass  # Table or column already exists — idempotent
     conn.commit()
 
     # Sprint 04: Apply ALTER TABLE ADD COLUMN statements idempotently.
