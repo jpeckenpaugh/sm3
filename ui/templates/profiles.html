@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Profiles — genesis-sm Dashboard{% endblock %}
+{% block content %}
+<h2 class="mb-4">Agent Profiles</h2>
+
+{% if profiles %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+  {% for p in profiles %}
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title mb-1">{{ p.name }}</h5>
+        <div>
+          <span class="badge bg-secondary">{{ p.version }}</span>
+          {% if p.base_profile %}
+          <span class="badge bg-info">extends {{ p.base_profile }}</span>
+          {% endif %}
+          <span class="badge bg-dark">{{ p.component_count }} components</span>
+        </div>
+        <hr class="my-2">
+        {% if p.preamble %}
+        <p class="card-text small">{{ p.preamble[:300] }}{% if p.preamble|length > 300 %}…{% endif %}</p>
+        {% endif %}
+        <div class="d-flex gap-1 flex-wrap mt-2">
+          <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#perms-{{ p.id }}">permissions</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#header-{{ p.id }}">header</button>
+          {% if p.body %}
+          <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#body-{{ p.id }}">body</button>
+          {% endif %}
+        </div>
+        <div class="collapse mt-2" id="perms-{{ p.id }}">
+          <pre class="bg-dark text-light p-2 rounded small" style="max-height:200px"><code>{{ p.permissions }}</code></pre>
+        </div>
+        <div class="collapse mt-2" id="header-{{ p.id }}">
+          <pre class="bg-dark text-light p-2 rounded small" style="max-height:200px"><code>{{ p.header }}</code></pre>
+        </div>
+        {% if p.body %}
+        <div class="collapse mt-2" id="body-{{ p.id }}">
+          <pre class="bg-dark text-light p-2 rounded small" style="max-height:300px"><code>{{ p.body }}</code></pre>
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-footer text-secondary small">
+        Created {{ p.created_at[:10] }} — Updated {{ p.updated_at[:10] }}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">No profiles found.</div>
+{% endif %}
+{% endblock %}

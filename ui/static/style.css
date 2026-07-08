@@ -1,0 +1,16 @@
+.sidebar {
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+  background: var(--bs-body-bg);
+}
+.sidebar .nav-link {
+  color: var(--bs-body-color);
+}
+.sidebar .nav-link:hover {
+  background: var(--bs-tertiary-bg);
+}
+pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+}

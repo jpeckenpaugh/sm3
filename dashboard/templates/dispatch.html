@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Dispatch Log — Operator Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="bi bi-send me-2"></i>Agent Dispatch Log</h2>
+    <span class="text-secondary small">{{ logs|length }} total</span>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-dark table-striped table-monospace mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Sprint</th>
+                    <th>Agent</th>
+                    <th>Session</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Completed</th>
+                    <th>Response</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in logs %}
+                <tr>
+                    <td>{{ d.id }}</td>
+                    <td><a href="/sprints/{{ d.sprint_id }}">#{{ d.sprint_id }}</a></td>
+                    <td><strong>{{ d.agent_name }}</strong></td>
+                    <td class="small text-secondary" title="{{ d.session_id }}">{{ d.session_id[:16] }}...</td>
+                    <td>
+                        <span class="badge {% if d.status == 'completed' %}bg-success{% elif d.status == 'failed' %}bg-danger{% else %}bg-primary{% endif %} badge-status">
+                            {{ d.status }}
+                        </span>
+                    </td>
+                    <td class="small">{{ d.created_at[:19] if d.created_at else '—' }}</td>
+                    <td class="small">{{ d.completed_at[:19] if d.completed_at else '—' }}</td>
+                    <td class="truncate small text-secondary">{{ d.response_text[:60] if d.response_text else '' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-secondary py-4">
+                        <i class="bi bi-inbox me-2"></i>No dispatch logs yet
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Sprints — genesis-sm Dashboard{% endblock %}
+{% block content %}
+<h2 class="mb-4">Sprints</h2>
+
+{% if sprints %}
+<div class="table-responsive">
+  <table class="table table-sm table-striped table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Number</th>
+        <th>Mode</th>
+        <th>Status</th>
+        <th>Phase Runs</th>
+        <th>Dispatches</th>
+        <th>Started</th>
+        <th>Completed</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sprints %}
+      <tr>
+        <td>{{ s.id }}</td>
+        <td><a href="/phases?sprint_id={{ s.id }}" class="fw-bold">{{ s.number }}</a></td>
+        <td><span class="badge bg-secondary">{{ s.mode }}</span></td>
+        <td>
+          <span class="badge bg-{{ 'success' if s.status == 'completed' else 'primary' if s.status == 'active' else 'danger' if s.status == 'failed' else 'warning' if s.status == 'blocked' else 'secondary' }}">
+            {{ s.status }}
+          </span>
+        </td>
+        <td>{{ s.phase_count }}</td>
+        <td>{{ s.dispatch_count }}</td>
+        <td><small class="text-secondary">{{ s.started_at or '—' }}</small></td>
+        <td><small class="text-secondary">{{ s.completed_at or '—' }}</small></td>
+        <td><small>{{ s.notes or '' }}</small></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info">No sprints found.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Phases — genesis-sm Dashboard{% endblock %}
+{% block content %}
+<h2 class="mb-4">Phase Runs</h2>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-auto">
+    <select name="sprint_id" class="form-select form-select-sm">
+      <option value="">All sprints</option>
+      {% for s in sprints %}
+      <option value="{{ s.id }}" {% if selected_sprint == s.id %}selected{% endif %}>Sprint {{ s.number }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="phase" class="form-select form-select-sm">
+      <option value="">All phases</option>
+      {% for p in phases_list %}
+      <option value="{{ p }}" {% if selected_phase == p %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <input type="number" name="limit" value="{{ selected_limit }}" class="form-control form-control-sm" style="width:80px" min="1" max="500">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    <a href="/phases" class="btn btn-sm btn-outline-secondary">Clear</a>
+  </div>
+</form>
+
+{% if phases %}
+<div class="table-responsive">
+  <table class="table table-sm table-striped table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Sprint</th>
+        <th>Phase</th>
+        <th>Iter</th>
+        <th>Attempt</th>
+        <th>Status</th>
+        <th>Events</th>
+        <th>Started</th>
+        <th>Completed</th>
+        <th>Summary</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in phases %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td>{{ p.sprint_id }}</td>
+        <td><code>{{ p.phase }}</code></td>
+        <td>{{ p.iteration }}</td>
+        <td>{{ p.attempt }}</td>
+        <td>
+          <span class="badge bg-{{ 'success' if p.status == 'passed' else 'danger' if p.status == 'failed' else 'warning' if p.status == 'running' else 'secondary' }}">
+            {{ p.status }}
+          </span>
+        </td>
+        <td><span class="badge bg-secondary">{{ p.event_count }}</span></td>
+        <td><small class="text-secondary">{{ p.started_at[:19] if p.started_at else '—' }}</small></td>
+        <td><small class="text-secondary">{{ p.completed_at[:19] if p.completed_at else '—' }}</small></td>
+        <td><small class="text-truncate d-inline-block" style="max-width:200px">{{ p.output_summary or '' }}</small></td>
+        <td>{% if p.error %}<small class="text-danger fst-italic">{{ p.error[:100] }}</small>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info">No phase runs found matching filters.</div>
+{% endif %}
+{% endblock %}

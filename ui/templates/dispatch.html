@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Dispatch — genesis-sm Dashboard{% endblock %}
+{% block content %}
+<h2 class="mb-4">Agent Dispatch Log</h2>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-auto">
+    <select name="sprint_id" class="form-select form-select-sm">
+      <option value="">All sprints</option>
+      {% for s in sprints %}
+      <option value="{{ s.id }}" {% if selected_sprint == s.id %}selected{% endif %}>Sprint {{ s.number }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="agent_name" class="form-select form-select-sm">
+      <option value="">All agents</option>
+      {% for a in agents %}
+      <option value="{{ a }}" {% if selected_agent == a %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <input type="number" name="limit" value="{{ selected_limit }}" class="form-control form-control-sm" style="width:80px" min="1" max="500">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    <a href="/dispatch" class="btn btn-sm btn-outline-secondary">Clear</a>
+  </div>
+</form>
+
+{% if dispatches %}
+<div class="table-responsive">
+  <table class="table table-sm table-striped table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Sprint</th>
+        <th>Agent</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Completed</th>
+        <th>Request</th>
+        <th>Response</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in dispatches %}
+      <tr>
+        <td>{{ d.id }}</td>
+        <td>{{ d.sprint_id }}</td>
+        <td><code>{{ d.agent_name }}</code></td>
+        <td>
+          <span class="badge bg-{{ 'success' if d.status == 'completed' else 'danger' if d.status == 'failed' else 'secondary' }}">
+            {{ d.status }}
+          </span>
+        </td>
+        <td><small class="text-secondary">{{ d.created_at[:19] if d.created_at else '—' }}</small></td>
+        <td><small class="text-secondary">{{ d.completed_at[:19] if d.completed_at else '—' }}</small></td>
+        <td>
+          <button class="btn btn-sm btn-outline-secondary py-0" type="button" data-bs-toggle="collapse" data-bs-target="#req-{{ d.id }}">view</button>
+          <div class="collapse mt-1" id="req-{{ d.id }}">
+            <pre class="bg-dark text-light p-2 rounded small" style="max-height:200px"><code>{{ d.request_text[:500] }}{% if d.request_text|length > 500 %}…{% endif %}</code></pre>
+          </div>
+        </td>
+        <td>
+          {% if d.response_text %}
+          <button class="btn btn-sm btn-outline-secondary py-0" type="button" data-bs-toggle="collapse" data-bs-target="#resp-{{ d.id }}">view</button>
+          <div class="collapse mt-1" id="resp-{{ d.id }}">
+            <pre class="bg-dark text-light p-2 rounded small" style="max-height:200px"><code>{{ d.response_text[:500] }}{% if d.response_text|length > 500 %}…{% endif %}</code></pre>
+          </div>
+          {% else %}
+          <small class="text-secondary">—</small>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info">No dispatch records found matching filters.</div>
+{% endif %}
+{% endblock %}

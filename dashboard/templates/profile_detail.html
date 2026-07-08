@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.name }} — Operator Dashboard{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">Home</a></li>
+        <li class="breadcrumb-item"><a href="/profiles">Profiles</a></li>
+        <li class="breadcrumb-item active">{{ profile.name }}</li>
+    </ol>
+</nav>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h4 class="card-title">{{ profile.name }}</h4>
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-secondary">Version</td><td>v{{ profile.version }}</td></tr>
+                    <tr><td class="text-secondary">Base Profile</td><td>{{ profile.base_profile if profile.base_profile else '—' }}</td></tr>
+                    <tr><td class="text-secondary">Created</td><td class="small">{{ profile.created_at[:19] }}</td></tr>
+                    <tr><td class="text-secondary">Updated</td><td class="small">{{ profile.updated_at[:19] }}</td></tr>
+                </table>
+                {% if profile.preamble %}
+                <hr>
+                <h6>Preamble</h6>
+                <p class="small text-secondary mb-0">{{ profile.preamble }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Header</div>
+            <div class="card-body json-block">
+                <pre class="mb-0"><code>{{ profile.header | json_pretty if profile.header else '{}' }}</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Permissions</div>
+            <div class="card-body json-block">
+                <pre class="mb-0"><code>{{ profile.permissions | json_pretty if profile.permissions else '{}' }}</code></pre>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Pipeline State</div>
+            <div class="card-body">
+                {% if pipeline_state %}
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-secondary">State</td><td><strong>{{ pipeline_state.name }}</strong></td></tr>
+                    <tr><td class="text-secondary">Agent Name</td><td>{{ pipeline_state.agent_name }}</td></tr>
+                    <tr><td class="text-secondary">Description</td><td class="small">{{ pipeline_state.description }}</td></tr>
+                </table>
+                {% else %}
+                <p class="text-secondary mb-0"><i class="bi bi-inbox me-1"></i>Not assigned to any pipeline state</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if components %}
+<div class="card">
+    <div class="card-header">Components <span class="badge bg-secondary ms-2">{{ components|length }}</span></div>
+    <div class="card-body p-0">
+        <table class="table table-dark table-striped table-monospace mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Type</th>
+                    <th>Name</th>
+                    <th>Content Preview</th>
+                    <th>Params</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in components %}
+                <tr>
+                    <td>{{ c.order_idx }}</td>
+                    <td><span class="badge bg-secondary badge-status">{{ c.type }}</span></td>
+                    <td><strong>{{ c.name }}</strong></td>
+                    <td class="truncate small text-secondary">{{ c.content[:80] if c.content else '' }}</td>
+                    <td class="small text-secondary">{{ c.params[:60] if c.params else '{}' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if profile.body %}
+<div class="card mt-3">
+    <div class="card-header">Body</div>
+    <div class="card-body json-block">
+        <pre class="mb-0" style="white-space: pre-wrap; word-break: break-word;">{{ profile.body }}</pre>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

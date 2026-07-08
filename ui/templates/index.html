@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Status — genesis-sm Dashboard{% endblock %}
+{% block content %}
+<h2 class="mb-4">System Status</h2>
+
+<div class="row g-3 mb-4">
+  {% set cards = [
+    ('Sprints', stats.sprint_count, 'primary'),
+    ('Active Sprint', stats.active_sprint.number ~ ' (' ~ stats.active_sprint.status ~ ')' if stats.active_sprint else '—', 'info'),
+    ('Phases Today', stats.phases_today, 'success'),
+    ('Dispatches', stats.dispatch_count, 'warning'),
+    ('Events', stats.event_count, 'danger'),
+    ('Profiles', stats.profile_count, 'secondary'),
+    ('Pipeline States', stats.pipeline_state_count, 'light'),
+  ] %}
+  {% for label, value, color in cards %}
+  <div class="col-md-3 col-lg-2">
+    <div class="card border-{{ color }}">
+      <div class="card-body text-center py-3">
+        <h6 class="card-subtitle text-secondary mb-1">{{ label }}</h6>
+        <span class="display-6 text-{{ color }}">{{ value }}</span>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if recent_events %}
+<div class="card">
+  <div class="card-header">Recent Events</div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-striped table-hover mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Time</th>
+          <th>Phase</th>
+          <th>Event</th>
+          <th>Data</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in recent_events %}
+        <tr>
+          <td><small class="text-secondary">{{ e.created_at }}</small></td>
+          <td><code>{{ e.phase }}</code></td>
+          <td><span class="badge bg-info">{{ e.event_type }}</span></td>
+          <td><small class="text-truncate d-inline-block" style="max-width:400px">{{ e.event_data[:100] }}{% if e.event_data|length > 100 %}…{% endif %}</small></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info">No events recorded yet.</div>
+{% endif %}
+{% endblock %}
