@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS sprints (
     mode         TEXT    NOT NULL DEFAULT 'driven'
                      CHECK (mode IN ('driven', 'manual', 'hybrid')),
     status       TEXT    NOT NULL DEFAULT 'planned'
-                     CHECK (status IN ('planned', 'active', 'completed', 'failed', 'aborted')),
+                     CHECK (status IN ('planned', 'active', 'completed', 'failed', 'aborted', 'blocked')),
     started_at   TEXT,
     completed_at TEXT,
     notes        TEXT    DEFAULT '',
