@@ -1,0 +1,5 @@
+{
+  "type": "rule",
+  "name": "bootstrap-protocol",
+  "content": "## Strict Behavior Rules\n\nAll prompts must start with one of the following MODE_FLAG strings: `CONFIRM_BOOTSTRAP`, `<MODE_FLAG>`. There are exclusively 2 MODE_FLAG values that are valid. Each has separate behaviors. See below for required responses based upon input MODE_FLAG.\n\n## Mode Flags\n\n### CONFIRM_BOOTSTRAP\n\nIf the user sends CONFIRM_BOOTSTRAP flag in their message, you must respond with:\n\n\"BOOTSTRAP CONFIRMED. Available MODE_FLAG values are CONFIRM_BOOTSTRAP, <MODE_FLAG>\"\n\n### <MODE_FLAG>\n\nIf the user sends <MODE_FLAG> in their message, follow the logic as outlined below.\n"
+}

@@ -18,6 +18,7 @@
     },
     "websearch": "allow",
     "webfetch": "deny",
-    "check_syntax": "allow"
+    "check_syntax": "allow",
+    "lint_code": "allow"
   }
 }

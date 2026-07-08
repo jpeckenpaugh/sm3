@@ -13,6 +13,7 @@
     "edit": {
       "sprint/*/review.md": "allow",
       ".escalation/*": "allow"
-    }
+    },
+    "compare_files": "allow"
   }
 }

@@ -17,6 +17,9 @@
     },
     "websearch": "allow",
     "webfetch": "deny",
-    "check_syntax": "allow"
+    "check_syntax": "allow",
+    "search_files": "allow",
+    "list_files": "allow",
+    "file_tree": "allow"
   }
 }

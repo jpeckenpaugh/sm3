@@ -501,6 +501,15 @@ def cmd_status(args):
 
 # ─── Command: generate agent ────────────────────────────────────────────────
 
+def _deep_merge(base, override):
+    """Recursively merge override dict into base. Child values override parent."""
+    for key, value in override.items():
+        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+            _deep_merge(base[key], value)
+        else:
+            base[key] = value
+
+
 def _resolve_inheritance_chain(conn, profile_name):
     """Walk the base_profile chain from child to root.
 
@@ -525,16 +534,53 @@ def _resolve_inheritance_chain(conn, profile_name):
     return chain
 
 
-def _assemble_components_for_profiles(conn, chain):
+def _get_mode_flag(conn, profile_name):
+    """Extract the MODE_FLAG for a profile from its header.role.
+
+    The role field follows the pattern: 'the scribe — PLAN mode'
+    -> mode flag is 'PLAN'.  Falls back to pipeline state name,
+    then profile name suffix.
+    """
+    if not profile_name or not conn:
+        return ""
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT header FROM profiles WHERE name = ?", (profile_name,))
+        row = cur.fetchone()
+        if row and row[0]:
+            import json as _j
+            hdr = _j.loads(row[0])
+            role = hdr.get("role", "")
+            # Extract mode from "the X — MODE mode" pattern
+            import re as _re
+            m = _re.search(r'—\s*(.+?)\s+mode', role)
+            if m:
+                return m.group(1).strip()
+        # Fallback: pipeline state name
+        cur.execute("SELECT name FROM pipeline_states WHERE agent_name = ?", (profile_name,))
+        row = cur.fetchone()
+        if row:
+            return row[0]
+    except Exception:
+        pass
+    # Last fallback: profile name suffix
+    return profile_name.split("-", 1)[1] if "-" in profile_name else ""
+
+
+def _assemble_components_for_profiles(conn, chain, profile_name=""):
     """Collect components across an inheritance chain.
 
     Walks from root to child, collecting profile_components in order.
     Child components with the same component_id override parent ones.
 
+    If profile_name has a mode flag (e.g. 'scribe-PLAN' -> 'PLAN'),
+    substitutes <MODE_FLAG> in component content with the actual mode flag.
+
     Returns list of component content strings in assembly order.
     """
     seen_component_ids = set()
     ordered_components = []  # list of (order_idx, content)
+    mode_flag = _get_mode_flag(conn, profile_name) if profile_name else ""
 
     for profile_name, profile_id in chain:
         cursor = conn.cursor()
@@ -549,6 +595,9 @@ def _assemble_components_for_profiles(conn, chain):
         for cid, content, order_idx in cursor.fetchall():
             if cid not in seen_component_ids:
                 seen_component_ids.add(cid)
+                # Substitute <MODE_FLAG> with the actual mode flag
+                if mode_flag:
+                    content = content.replace("<MODE_FLAG>", mode_flag)
                 ordered_components.append((order_idx, content))
 
     # Sort by order_idx
@@ -579,11 +628,22 @@ def cmd_generate_agent(args):
 
         profile_name, version, header_json, permissions_json = row
         header = json.loads(header_json)
-        permissions = json.loads(permissions_json)
 
-        # 2. Resolve inheritance chain and assemble components
+        # Resolve inheritance chain
         chain = _resolve_inheritance_chain(conn, args.name)
-        body_parts = _assemble_components_for_profiles(conn, chain)
+
+        # Merge permissions from entire inheritance chain (root to child)
+        permissions = {}
+        for chain_name, _ in chain:
+            cursor.execute(
+                "SELECT permissions FROM profiles WHERE name = ?",
+                (chain_name,),
+            )
+            prow = cursor.fetchone()
+            if prow and prow[0]:
+                parent_perms = json.loads(prow[0])
+                _deep_merge(permissions, parent_perms)
+        body_parts = _assemble_components_for_profiles(conn, chain, args.name)
         assembled_body = "\n\n".join(body_parts)
 
         # 3. Build agent markdown
@@ -618,6 +678,41 @@ permission:
         print(f"  Inheritance: {chain_names}")
         print(f"  Components: {len(body_parts)} assembled")
 
+    finally:
+        conn.close()
+
+
+# ─── Command: generate agents (plural) ───────────────────────────────────────
+
+def cmd_generate_agents(args):
+    """Generate agent .md files for all profiles in the database."""
+    conn = get_conn(args.db)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM profiles ORDER BY name")
+        names = [row[0] for row in cursor.fetchall()]
+
+        if not names:
+            print("No profiles found. Run 'sm seed' first.")
+            return
+
+        print(f"Generating {len(names)} agent files...")
+        print()
+        success = 0
+        for name in names:
+            try:
+                agent_args = argparse.Namespace(
+                    name=name,
+                    output_dir=args.output_dir or ".opencode/agents",
+                    db=args.db,
+                )
+                cmd_generate_agent(agent_args)
+                success += 1
+            except Exception as e:
+                print(f"  ✗ {name}: {e}")
+
+        print()
+        print(f"✓ Generated {success}/{len(names)} agent files.")
     finally:
         conn.close()
 
@@ -1358,10 +1453,14 @@ def build_parser():
     p_gen = subparsers.add_parser("generate", help="Generate artifacts from profiles")
     p_gen_sub = p_gen.add_subparsers(dest="generate_target", help="What to generate")
 
-    p_gen_agent = p_gen_sub.add_parser("agent", help="Generate an OpenCode agent file")
+    p_gen_agent = p_gen_sub.add_parser("agent", help="Generate an OpenCode agent file for a single profile")
     p_gen_agent.add_argument("name", help="Profile name to render")
     p_gen_agent.add_argument("--output-dir", default=None, help="Output directory (default: .opencode/agents)")
     p_gen_agent.set_defaults(func=cmd_generate_agent)
+
+    p_gen_agents = p_gen_sub.add_parser("agents", help="Generate agent files for all profiles")
+    p_gen_agents.add_argument("--output-dir", default=None, help="Output directory (default: .opencode/agents)")
+    p_gen_agents.set_defaults(func=cmd_generate_agents)
 
     return parser
 

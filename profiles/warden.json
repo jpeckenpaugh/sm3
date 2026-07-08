@@ -10,6 +10,9 @@
     "*": "deny",
     "read": "allow",
     "websearch": "allow",
-    "webfetch": "deny"
+    "webfetch": "deny",
+    "search_files": "allow",
+    "list_files": "allow",
+    "file_tree": "allow"
   }
 }

@@ -74,6 +74,14 @@ def ensure_schema(conn, schema_path):
         except Exception:
             pass  # Column already exists
 
+    # Sprint 05: Drop zombie columns (body, preamble) from profiles table
+    for col in ["body", "preamble"]:
+        try:
+            conn.execute(f"ALTER TABLE profiles DROP COLUMN {col}")
+            conn.commit()
+        except Exception:
+            pass  # Column may not exist or SQLite version may not support DROP COLUMN
+
 
 def upsert_profile(conn, profile):
     """Insert or update a profile row, matched on name."""
@@ -89,14 +97,12 @@ def upsert_profile(conn, profile):
             print(f"  ⚠  Base profile '{base_profile}' not found for '{profile['name']}' — ignoring")
 
     cursor.execute(
-        """INSERT INTO profiles (name, version, header, permissions, preamble, body, base_profile)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
+        """INSERT INTO profiles (name, version, header, permissions, base_profile)
+           VALUES (?, ?, ?, ?, ?)
            ON CONFLICT(name) DO UPDATE SET
                version = excluded.version,
                header = excluded.header,
                permissions = excluded.permissions,
-               preamble = excluded.preamble,
-               body = excluded.body,
                base_profile = excluded.base_profile,
                updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')""",
         (
@@ -104,8 +110,6 @@ def upsert_profile(conn, profile):
             profile.get("version", "0.1.0"),
             json.dumps(profile.get("header", {})),
             json.dumps(profile.get("permissions", {})),
-            profile.get("preamble", ""),
-            profile.get("body", ""),
             base_profile,
         ),
     )
@@ -165,19 +169,37 @@ def upsert_profile_component(conn, profile_id, component_id, order_idx, params=N
 # ─── Seed loaders ───────────────────────────────────────────────────────────
 
 def load_seed_profiles(conn, profiles_dir):
-    """Load all JSON files from profiles/ directory."""
+    """Load all JSON files from profiles/ directory.
+
+    Two-pass load: base profiles first, then derived profiles.
+    This avoids 'Base profile not found' warnings when derived profiles
+    sort alphabetically before their base profiles.
+    """
     profiles_path = Path(profiles_dir)
     if not profiles_path.is_dir():
         print(f"  ⚠  Directory not found: {profiles_dir}")
         return 0
 
-    count = 0
+    all_profiles = []
     for fpath in sorted(profiles_path.glob("*.json")):
         with open(fpath) as f:
-            profile = json.load(f)
-        upsert_profile(conn, profile)
-        count += 1
-        print(f"  ✓ Profile: {profile['name']}")
+            all_profiles.append(json.load(f))
+
+    count = 0
+    # Pass 1: profiles without base_profile (base profiles)
+    for profile in all_profiles:
+        if not profile.get("base_profile"):
+            upsert_profile(conn, profile)
+            count += 1
+            print(f"  ✓ Profile: {profile['name']}")
+
+    # Pass 2: profiles with base_profile (derived profiles)
+    for profile in all_profiles:
+        if profile.get("base_profile"):
+            upsert_profile(conn, profile)
+            count += 1
+            print(f"  ✓ Profile: {profile['name']}")
+
     return count
 
 

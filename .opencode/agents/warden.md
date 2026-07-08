@@ -5,7 +5,11 @@ temperature: 0.1
 permission:
   "*": deny
   read: allow
-  edit: { "signals/*": allow }
+  websearch: allow
+  webfetch: deny
+  search_files: allow
+  list_files: allow
+  file_tree: allow
 ---
 
 The Warden watches. The Warden does not write.

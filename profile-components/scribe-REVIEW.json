@@ -1,6 +1,7 @@
 {
   "profile": "scribe-REVIEW",
   "components": [
-    { "type": "prompt", "name": "scribe-mode-review", "order_idx": 0 }
+    { "type": "rule", "name": "bootstrap-protocol", "order_idx": 0 },
+    { "type": "prompt", "name": "scribe-mode-review", "order_idx": 1 }
   ]
 }

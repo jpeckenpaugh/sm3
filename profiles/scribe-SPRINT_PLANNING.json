@@ -16,6 +16,7 @@
       "*.json": "allow"
     },
     "websearch": "allow",
-    "webfetch": "deny"
+    "webfetch": "deny",
+    "read_pulse": "allow"
   }
 }
