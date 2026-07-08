@@ -195,8 +195,10 @@ mkdir -p "$SAMPLE_DIR/sprint/01"
 touch "$SAMPLE_DIR/sprint/01/brief.md"
 
 python3 -c "
-import sqlite3, os
+import sqlite3, os, sys
+_root = os.path.abspath('.')
 os.chdir('$SAMPLE_DIR')
+sys.path.insert(0, _root)
 conn = sqlite3.connect('$TEST_DB')
 
 from pipeline.engine import _verify_contracts, _write_contract_manifest
@@ -208,9 +210,9 @@ assert len(results) >= 1, f'Expected at least 1 contract, got {len(results)}'
 brief_results = [r for r in results if 'brief.md' in r['pattern']]
 assert len(brief_results) > 0, 'brief.md contract not found'
 
-# Test manifest writing
+# Test manifest writing (writes to CWD which is now $SAMPLE_DIR)
 _write_contract_manifest('PLAN', 1, results)
-manifest_path = 'sprint/01/.contracts/plan.json'
+manifest_path = os.path.join(os.getcwd(), 'sprint/1/.contracts/plan.json')
 assert os.path.exists(manifest_path), f'Manifest not written to {manifest_path}'
 
 conn.close()
