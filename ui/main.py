@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-from db import query, query_one, list_databases, set_active_db
+from db import query, query_one, list_databases, set_active_db, get_active_db_name
 from templates import templates
 
 app = FastAPI(title="genesis-sm Dashboard")
@@ -44,12 +44,57 @@ async def index(request: Request):
         "profile_count": query_one("SELECT COUNT(*) AS c FROM profiles")["c"],
         "pipeline_state_count": query_one("SELECT COUNT(*) AS c FROM pipeline_states")["c"],
     }
-    recent_events = query("SELECT * FROM phase_events ORDER BY id DESC LIMIT 10")
+    recent_events = query("SELECT * FROM phase_events ORDER BY id DESC LIMIT 50")
+    dbs = list_databases()
+    active = get_active_db_name()
     return templates.TemplateResponse(request, "index.html", {
         "stats": stats,
         "recent_events": recent_events,
+        "databases": dbs,
+        "active_db_name": active,
     })
 
+
+
+
+@app.get("/diff")
+async def file_diff(request: Request, path: str = ""):
+    from git import get_file_diff
+    diff = get_file_diff(path)
+    dbs = list_databases()
+    active = get_active_db_name()
+    return templates.TemplateResponse(request, "diff.html", {
+        "diff": diff,
+        "path": path,
+        "databases": dbs,
+        "active_db_name": active,
+    })
+
+@app.get("/commit-diff")
+async def commit_diff(request: Request, hash: str = ""):
+    from git import get_commit_diff
+    diff = get_commit_diff(hash)
+    dbs = list_databases()
+    active = get_active_db_name()
+    return templates.TemplateResponse(request, "diff.html", {
+        "diff": diff,
+        "path": f"commit {hash}",
+        "databases": dbs,
+        "active_db_name": active,
+    })
+@app.get("/files")
+async def files_page(request: Request):
+    from git import get_git_status, get_git_log
+    status = get_git_status()
+    log = get_git_log(10)
+    dbs = list_databases()
+    active = get_active_db_name()
+    return templates.TemplateResponse(request, "files.html", {
+        "status": status,
+        "log": log,
+        "databases": dbs,
+        "active_db_name": active,
+    })
 
 if __name__ == "__main__":
     import uvicorn
