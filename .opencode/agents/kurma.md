@@ -7,6 +7,7 @@ permission:
   read: allow
   edit:
     "signals/*": allow
+    "reflections/*": allow
   webfetch: allow
   websearch: allow
   question: allow
