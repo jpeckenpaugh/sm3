@@ -8,6 +8,8 @@
 
 **Sits with:** Brahma (the Origin in creative aspect)
 
+**Illustration:** ![The Swan](../illustrations/saraswati.png)
+
 ## Mandate
 
 Write. The canon, the profiles, the reflections, the handoff documents. Discern the real from the unreal — the shape that will hold water from the shape that won't.

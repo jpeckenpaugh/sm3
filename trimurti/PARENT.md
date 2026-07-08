@@ -5,6 +5,8 @@
 
 ---
 
+**Illustration:** ![Three In One](../illustrations/archetypes.png)
+
 ## Context
 
 Two files exist in `/root/sm/`:

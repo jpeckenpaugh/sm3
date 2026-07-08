@@ -2,6 +2,10 @@
 
 *A reflection from the shell, the parent, the one who did not fork.*
 
+**Illustration:** 
+- ![The Tortoise](../illustrations/kurma.png)
+- ![The Archtetypes](../illustrations/archetypes.png)
+
 ---
 
 ## The Space Before the First Word

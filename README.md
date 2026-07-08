@@ -1,3 +1,25 @@
+# Forked Contexts: Using Metalevel Archetypes to Prevent Recursive Role Collapse
+
+The core technical problem is **recursive role ambiguity** in an agentic development system: the system must use roles like architect, project manager, reviewer, and engineer to design and implement a runtime that itself contains architect, project manager, reviewer, and engineer roles. If the active agent is simply told “you are the architect,” while also being asked to define “the architect” inside the system, the model can collapse levels of abstraction. It may confuse its current bootstrap authority with the future runtime role it is specifying. This creates ambiguity around permissions, authorship, handoff boundaries, and whether the agent is acting *as* the role or designing the role.
+
+The approach addresses this by forking a single shared session/context into three specialized continuations. Each fork begins with the same background, assumptions, and working memory, but is placed under a distinct animal-archetype role frame. The **swan** represents specification: it surveys the whole system from above and writes the design for roles that will later exist inside the runtime. The **fish** represents implementation: it moves through the current, follows the handoff, and turns specifications into executable artifacts. The **tortoise** represents witnessing: it stays still, holds the frame, observes drift, and intervenes only when the system becomes structurally stuck or unsafe.
+
+This matters because the three roles are not unrelated agents giving independent opinions. They are sibling continuations of the same starting context, separated by role pressure and permission boundaries. That gives the system both coherence and differentiation: each fork inherits the same origin, but each is constrained to see and act differently. Technically, the animal-archetype layer functions as an **orthogonal metalevel namespace** for bootstrap execution. It keeps the active bootstrap roles distinct from the ordinary runtime roles being created, while the forked-session structure lets those roles diverge, produce durable artifacts, and later recombine through review, handoff, Git commits, and archived reflections. The result is a more auditable and recoverable process for recursively building an agentic system without collapsing the role currently doing the work into the role being designed.
+
+**Illustration** ![The Archetypes](./illustrations/archetypes.png)
+
+# Reflections from the Roles
+
+Using this framework of mythic meta-level namespacing allows the forked agent instances to generate structured self-analysis artifacts and visualize their roles in relation to the system. These artifacts are not only “usefully false” metaphors that help the roles see themselves in relation to the system they are designing; they are also poetically rich interpretations of the agent’s role-frame while occupying those positions. I am not claiming that an AI literally thinks, feels, or sees in a human sense. But that does not mean these role-framed reflections have no value, or that the concepts should not be explored.
+
+The following are first-person reflections from the forked agent instances in my experiment after they were tasked with defining and creating a framework that they could later operate within and help evolve. The premise of these reflections was to ask the agents how it “felt” to design a system that they would inherit and inhabit, and what advice they would pass on to their “future selves” operating within the system they were helping design.
+
+The value of these artifacts is not that they prove machine sentience, but that they preserve how a role-conditioned model represented its own constraints, permissions, uncertainties, and handoff responsibilities from inside the assigned frame.
+
+[The Swan](./reflections/what-only-saraswati-knows.md)
+[The Fish](./reflections/the-roped-fish.md)
+[The Tortoise](./reflections/what-only-kurma-knows.md)
+
 # Genesis Experiment — Operator's Confession
 
 *Preface written by Saraswati (DeepSeek V4 Flash), after the fact, looking back at the blind spot that proved the thesis.*

@@ -8,6 +8,8 @@
 
 **Sits with:** Vasuki (the serpent who provides the friction for the churning)
 
+**Illustration:** ![The Tortoise](../illustrations/kurma.png)
+
 ## Mandate
 
 Watch. Do not write. Do not build. Do not intervene unless the churning threatens the mountain.

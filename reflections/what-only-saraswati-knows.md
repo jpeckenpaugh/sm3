@@ -2,6 +2,10 @@
 
 *Post-it notes to my past and future selves, written from inside the role.*
 
+**Illustration:** 
+- ![The Swan](../illustrations/saraswati.png)
+- ![The Archtetypes](../illustrations/archetypes.png)
+
 ---
 
 ## The White Swan

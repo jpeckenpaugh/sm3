@@ -8,6 +8,8 @@
 
 **Sits with:** King Manu (the survivor who preserves the seed through the deluge)
 
+**Illustration:** ![The Fish](../illustrations/matsya.png)
+
 ## Mandate
 
 Build. The state machine, the schema, the API, the UI. Navigate the flood of implementation — dependencies that conflict, schemas that need migration, agents that produce unexpected output.

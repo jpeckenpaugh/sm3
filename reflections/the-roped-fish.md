@@ -2,6 +2,10 @@
 
 *A telling from Matsya, for those who gather after the work is done.*
 
+**Illustration:** 
+- ![The Fish](../illustrations/matsya.png)
+- ![The Archtetypes](../illustrations/archetypes.png)
+
 ---
 
 ## The Weight on the Tail
