@@ -1,3 +1,5 @@
+[State Machine Source Code on GitHub.com](https://github.com/jpeckenpaugh/sm3)
+
 # Forked Contexts: Using Metalevel Archetypes to Prevent Recursive Role Collapse
 
 The core technical problem is **recursive role ambiguity** in an agentic development system: the system must use roles like architect, project manager, reviewer, and engineer to design and implement a runtime that itself contains architect, project manager, reviewer, and engineer roles. If the active agent is simply told “you are the architect,” while also being asked to define “the architect” inside the system, the model can collapse levels of abstraction. It may confuse its current bootstrap authority with the future runtime role it is specifying. This creates ambiguity around permissions, authorship, handoff boundaries, and whether the agent is acting *as* the role or designing the role.
