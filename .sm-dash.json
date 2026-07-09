@@ -1,16 +1,8 @@
 {
   "databases": [
     {
-      "name": "test-1",
-      "path": "/root/sm/test-projects/test-1/test-project.db"
-    },
-    {
-      "name": "test-2",
-      "path": "/root/sm/test-projects/test-2/test-project.db"
-    },
-    {
-      "name": "Main Container",
-      "path": "/root/sm/matsya.db"
+      "name": "EuchreGame Sprint",
+      "path": "/root/sm/test-projects/euchre/euchre.db"
     }
   ]
 }

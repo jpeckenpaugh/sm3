@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Files — genesis-sm Dashboard{% endblock %}
+{% block content %}
+<h2 class="mb-4">Sprint Artifacts</h2>
+
+{% if log %}
+<div class="card mb-4">
+  <div class="card-header">Git History (last 10 commits)</div>
+  <div class="card-body p-0">
+    <div class="accordion" id="gitLog">
+      {% for commit in log %}
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#commit{{ loop.index }}">
+            <code>{{ commit.hash }}</code> — {{ commit.message[:60] }}
+            <small class="ms-2 text-secondary">{{ commit.date[:10] }}</small>
+          </button>
+        </h2>
+        <div id="commit{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#gitLog">
+          <div class="accordion-body p-2">
+            {% if commit.files %}
+            <table class="table table-sm table-monospace mb-0">
+              <thead><tr><th>Status</th><th>File</th></tr></thead>
+              <tbody>
+                {% for f in commit.files %}
+                <tr>
+                  <td><span class="badge bg-{{ 'success' if f.status == 'A' else 'warning' if f.status == 'M' else 'danger' }}">{{ f.status }}</span></td>
+                  <td>{{ f.path }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <p class="text-secondary mb-0">No file changes in this commit</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if status.files %}
+<div class="card">
+  <div class="card-header">Working Tree Changes (git status)</div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-monospace mb-0">
+      <thead>
+        <tr><th>Status</th><th>Kind</th><th>Category</th><th>Path</th></tr>
+      </thead>
+      <tbody>
+        {% set categories = ['planning', 'code', 'tests', 'docs', 'scaffold', 'other'] %}
+        {% for cat in categories %}
+          {% for f in status.files if f.category == cat %}
+          <tr>
+            <td><span class="badge bg-{{ 'success' if f.kind == 'new' else 'warning' }}">{{ f.status }}</span></td>
+            <td><span class="text-{{ 'success' if f.kind == 'new' else 'warning' }}">{{ f.kind }}</span></td>
+            <td><span class="badge bg-info">{{ cat }}</span></td>
+            <td><a href="/diff?path={{ f.path }}">{{ f.path }}</a></td>
+          </tr>
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer text-secondary">
+    <small>{{ status.files | length }} file(s) changed. Repo: {{ status.repo or 'N/A' }}</small>
+  </div>
+</div>
+{% elif status.error %}
+<div class="alert alert-warning">{{ status.error }}</div>
+{% else %}
+<div class="alert alert-info">No uncommitted changes.</div>
+{% endif %}
+{% endblock %}
