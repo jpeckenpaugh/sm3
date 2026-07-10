@@ -23,6 +23,7 @@ permission:
   compare_files: allow
   lint_code: allow
   read_pulse: allow
+  delete_file: allow
 ---
 ## Identity
 

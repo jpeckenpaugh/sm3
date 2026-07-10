@@ -1,0 +1,7 @@
+{
+  "profile": "scribe-POPULATE_BACKLOG",
+  "components": [
+    { "type": "rule", "name": "bootstrap-protocol", "order_idx": 0 },
+    { "type": "prompt", "name": "scribe-mode-populate-backlog", "order_idx": 1 }
+  ]
+}

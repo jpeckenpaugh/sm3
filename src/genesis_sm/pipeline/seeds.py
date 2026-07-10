@@ -20,7 +20,7 @@ def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
     # ── pipeline_states ──────────────────────────────────────────────────
     # Saraswati's expanded pantheon: 9 states, 3 base profiles, 7 derived agents
     states = [
-        ("POPULATE_BACKLOG", "Read concept, decompose into backlog features", "scribe-PLAN"),
+        ("POPULATE_BACKLOG", "Read concept, decompose into backlog features", "scribe-POPULATE_BACKLOG"),
         ("SPRINT_PLANNING",  "Select features for this sprint, write plan",   "scribe-SPRINT_PLANNING"),
         ("DESIGN",           "Write feature design document",                "scribe-DESIGN"),
         ("ARCHITECT",        "Write technical specification",               "scribe-ARCHITECT"),

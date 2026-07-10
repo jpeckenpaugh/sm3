@@ -1,9 +1,9 @@
 {
-  "name": "scribe-PLAN",
+  "name": "scribe-POPULATE_BACKLOG",
   "version": "1.0.0",
   "base_profile": "scribe",
   "header": {
-    "role": "the scribe — PLAN mode",
+    "role": "the scribe — POPULATE_BACKLOG mode",
     "mode": "all",
     "temperature": 0.15
   },
@@ -11,12 +11,12 @@
     "*": "deny",
     "read": "allow",
     "edit": {
-      "*.md": "allow",
-      "*.sql": "allow",
-      "*.json": "allow"
+      "backlog/*.md": "allow"
     },
     "websearch": "allow",
     "webfetch": "deny",
-    "read_pulse": "allow"
+    "search_files": "allow",
+    "list_files": "allow",
+    "file_tree": "allow"
   }
 }
