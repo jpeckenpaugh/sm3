@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Diff — genesis-sm Dashboard{% endblock %}
+{% block content %}
+<h2 class="mb-4">Diff: <code>{{ path }}</code></h2>
+
+{% if diff %}
+<div class="card">
+  <div class="card-body p-0">
+    <pre class="m-0 p-3" style="font-size: 0.75rem; line-height: 1.4; overflow-x: auto; max-height: 80vh;"><code>{% for line in diff.split('\n') %}
+{% set cls = '' %}
+{% if line.startswith('+') and not line.startswith('+++') %}{% set cls = 'text-success' %}{% endif %}
+{% if line.startswith('-') and not line.startswith('---') %}{% set cls = 'text-danger' %}{% endif %}
+{% if line.startswith('@') %}{% set cls = 'text-info' %}{% endif %}
+{% if line.startswith('diff ') or line.startswith('index ') %}{% set cls = 'text-secondary' %}{% endif %}
+<span class="{{ cls }}">{{ line }}</span>
+{% endfor %}</code></pre>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info">No diff available for <code>{{ path }}</code>.</div>
+{% endif %}
+
+<p class="mt-3"><a href="/files" class="btn btn-outline-secondary btn-sm">&larr; Back to Files</a></p>
+{% endblock %}
