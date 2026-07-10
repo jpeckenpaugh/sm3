@@ -11,7 +11,8 @@
     "*": "deny",
     "read": "allow",
     "edit": {
-      "backlog/*.md": "allow"
+      "backlog/*.md": "allow",
+      ".escalation/POPULATE_BACKLOG/*.md": "allow"
     },
     "websearch": "allow",
     "webfetch": "deny",

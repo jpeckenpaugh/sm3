@@ -11,7 +11,8 @@
     "*": "deny",
     "read": "allow",
     "edit": {
-      "sprint/*.md": "allow"
+      "sprint/*.md": "allow",
+      ".escalation/SPRINT_PLANNING/*.md": "allow"
     },
     "websearch": "allow",
     "webfetch": "deny"

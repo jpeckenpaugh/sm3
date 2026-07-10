@@ -11,10 +11,10 @@
     "*": "deny",
     "read": "allow",
     "edit": {
-      "*.py": "allow",
+      "src/*": "allow",
+      "requirements.txt": "allow",
       "*.sh": "allow",
-      "*.sql": "allow",
-      "*.md": "allow"
+      ".escalation/ENGINEER/*.md": "allow"
     },
     "websearch": "allow",
     "webfetch": "deny",

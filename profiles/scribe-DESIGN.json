@@ -11,12 +11,10 @@
     "*": "deny",
     "read": "allow",
     "edit": {
-      "*.md": "allow",
-      "*.sql": "allow",
-      "*.json": "allow"
+      "sprint/*.md": "allow",
+      ".escalation/DESIGN/*.md": "allow"
     },
     "websearch": "allow",
-    "webfetch": "deny",
-    "read_pulse": "allow"
+    "webfetch": "deny"
   }
 }
