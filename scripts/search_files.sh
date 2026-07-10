@@ -35,7 +35,7 @@ else
 fi
 
 if [ -n "$INCLUDE" ]; then
-    GREP_OPTS="$GREP_OPTS --include='$INCLUDE'"
+    GREP_OPTS="$GREP_OPTS --include=$INCLUDE"
 fi
 
 RESULTS=$(eval grep $GREP_OPTS "$PATTERN" "$ROOT" 2>/dev/null)

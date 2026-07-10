@@ -10,15 +10,19 @@
     "*": "deny",
     "read": { "*": "allow", ".opencode/*": "deny"},
     "edit": {
-      "src/**/*": "allow",
+      "src/*": "allow",
       "requirements.txt": "allow",
-      ".gitignore": "allow"
+      ".gitignore": "allow",
+      "*.sh": "allow"
     },
     "websearch": "allow",
     "webfetch": "deny",
     "check_syntax": "allow",
     "search_files": "allow",
     "list_files": "allow",
-    "file_tree": "allow"
+    "file_tree": "allow",
+    "compare_files": "allow",
+    "lint_code": "allow",
+    "read_pulse": "allow"
   }
 }

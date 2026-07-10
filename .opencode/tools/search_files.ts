@@ -11,13 +11,26 @@ export default tool({
     max_results: tool.schema.number().optional().default(50).describe("Maximum results to return"),
   },
   async execute(args, context) {
-    const scriptPath = path.join(context.directory, "scripts", "search_files.sh");
-    let cmd = `bash ${scriptPath} ${JSON.stringify(args.pattern)}`;
-    if (args.path !== ".") cmd += ` --path ${JSON.stringify(args.path)}`;
-    if (args.file_pattern) cmd += ` --include ${JSON.stringify(args.file_pattern)}`;
-    if (args.regex) cmd += ` --regex`;
-    if (args.max_results !== 50) cmd += ` --max ${args.max_results}`;
-    const result = await Bun.$`${cmd}`.text();
-    return result.trim();
+    const root = args.path || ".";
+    const grepArgs = ["-r", "-n"];
+    if (args.file_pattern) grepArgs.push("--include", args.file_pattern);
+    if (!args.regex) grepArgs.push("-F");
+    grepArgs.push(args.pattern, root);
+
+    const result = await Bun.$`grep ${grepArgs} ${root}`.text();
+    const lines = result.trim().split("\n").filter(Boolean);
+    const results = lines.slice(0, args.max_results).map(line => {
+      const sepIndex = line.indexOf(":");
+      const file = line.substring(0, sepIndex);
+      const rest = line.substring(sepIndex + 1);
+      const lineNum = parseInt(rest, 10) || 0;
+      const content = rest.substring(rest.indexOf(":") + 1);
+      return { file, line: lineNum, content };
+    });
+    return JSON.stringify({
+      matches: results.length,
+      results,
+      truncated: lines.length > args.max_results,
+    });
   },
 });

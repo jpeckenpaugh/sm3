@@ -25,20 +25,39 @@ fi
 cd "$ROOT" || exit 1
 
 if command -v tree &> /dev/null; then
-    TREE_OPTS="-L $DEPTH --charset=utf-8"
+    TREE_OPTS="-J -L $DEPTH --charset=utf-8"
     if [ "$DIRS_ONLY" = "true" ]; then
         TREE_OPTS="$TREE_OPTS -d"
     fi
     if [ -n "$PATTERN" ]; then
-        TREE_OPTS="$TREE_OPTS -P '$PATTERN'"
+        TREE_OPTS="$TREE_OPTS -P $PATTERN"
     fi
-    eval tree $TREE_OPTS 2>/dev/null
+    eval tree "$TREE_OPTS" 2>/dev/null
 else
-    # Fallback to find
-    FIND_OPTS="."
+    # Fallback to find — produce JSON manually
+    echo '{'
+    echo '  "root": "'"$ROOT"'",'
+    echo '  "depth": '"$DEPTH"','
+    echo '  "directories": ['
     if [ "$DIRS_ONLY" = "true" ]; then
-        find . -maxdepth "$DEPTH" -type d 2>/dev/null | sort
+        FIRST=true
+        while IFS= read -r D; do
+            if [ -n "$D" ]; then
+                if [ "$FIRST" = true ]; then FIRST=false; else echo ','; fi
+                echo "    \"$D\""
+            fi
+        done < <(find . -maxdepth "$DEPTH" -type d 2>/dev/null | sort)
     else
-        find . -maxdepth "$DEPTH" -type f -o -type d 2>/dev/null | sort
+        FIRST=true
+        while IFS= read -r E; do
+            if [ -n "$E" ]; then
+                if [ "$FIRST" = true ]; then FIRST=false; else echo ','; fi
+                echo "    \"$E\""
+            fi
+        done < <(find . -maxdepth "$DEPTH" -type f -o -type d 2>/dev/null | sort)
     fi
+    echo ''
+    echo '  ],'
+    echo '  "total": '"$COUNT"
+    echo '}'
 fi

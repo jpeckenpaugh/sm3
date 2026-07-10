@@ -40,7 +40,8 @@ if [ "$MODE" = "summary" ]; then
         echo '{"identical": true, "hunks": 0, "additions": 0, "deletions": 0, "summary": "Files are identical"}'
     else
         DIFF_OUT=$(diff -u "$FILE_A" "$FILE_B" 2>/dev/null)
-        HUNKS=$(echo "$DIFF_OUT" | grep -c '^@@' || echo "1")
+        HUNKS=$(echo "$DIFF_OUT" | grep -c '^@@' || true)
+        [ -z "$HUNKS" ] && HUNKS=0
         ADD=$(echo "$DIFF_OUT" | grep -c '^+' || echo "0")
         DEL=$(echo "$DIFF_OUT" | grep -c '^-' || echo "0")
         # Remove header diff lines from counts

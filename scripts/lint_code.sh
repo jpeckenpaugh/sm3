@@ -34,24 +34,30 @@ if command -v pyflakes &> /dev/null; then
         echo '  "valid": false,'
         echo '  "issues": ['
         FIRST=true
-        while IFS=: read -r LINE COL TYPE REST; do
+        ERRORS=0
+        WARNINGS=0
+        STYLE=0
+        while IFS=: read -r LINE COL MSG; do
+            CODE=$(echo "$MSG" | awk '{print $1}')
+            MESSAGE=$(echo "$MSG" | sed 's/^[[:space:]]*[A-Z0-9]* //')
             if [ "$FIRST" = true ]; then
                 FIRST=false
             else
                 echo ','
             fi
             SEVERITY="warning"
-            case "$TYPE" in
-                F821|F822|F823|F831) SEVERITY="error" ;;
-                E*) SEVERITY="style" ;;
+            case "$CODE" in
+                F821|F822|F823|F831) SEVERITY="error"; ERRORS=$((ERRORS + 1)) ;;
+                E*) SEVERITY="style"; STYLE=$((STYLE + 1)) ;;
+                *) WARNINGS=$((WARNINGS + 1)) ;;
             esac
-            echo "    {\"line\": $LINE, \"column\": ${COL:-0}, \"code\": \"$TYPE\", \"message\": \"$(echo "$REST" | sed 's/"/\\"/g' | xargs)\", \"severity\": \"$SEVERITY\"}"
+            echo "    {\"line\": $LINE, \"column\": ${COL:-0}, \"code\": \"$CODE\", \"message\": \"$(echo "$MESSAGE" | sed 's/"/\\"/g' | xargs)\", \"severity\": \"$SEVERITY\"}"
         done <<< "$OUTPUT"
         echo ''
         echo '  ],'
-        echo '  "error_count": 0,'
-        echo '  "warning_count": 0,'
-        echo '  "style_count": 0'
+        echo '  "error_count": '"$ERRORS"','
+        echo '  "warning_count": '"$WARNINGS"','
+        echo '  "style_count": '"$STYLE"
         echo '}'
     fi
     exit $EXIT_CODE

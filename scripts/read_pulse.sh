@@ -39,18 +39,16 @@ SELECT
   (SELECT COUNT(*) FROM sprints) AS sprint_count,
   (SELECT json_object('number', number, 'status', status, 'started_at', started_at)
    FROM sprints ORDER BY id DESC LIMIT 1) AS active_sprint,
-  (SELECT json_object('timestamp', created_at, 'event_type', event_type, 'status', 'active')
-   FROM phase_events ORDER BY id DESC LIMIT 1) AS last_pulse,
-  (SELECT COUNT(*) FROM dispatch_log) AS dispatch_count,
-  (SELECT COUNT(*) FROM phase_runs) AS phase_count
+  (SELECT completed_at FROM phase_runs ORDER BY id DESC LIMIT 1) AS last_pulse_at,
+  (SELECT COUNT(*) FROM phase_runs) AS phase_count,
+  (SELECT COUNT(*) FROM dispatch_log) AS dispatch_count
 " 2>/dev/null | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 if isinstance(data, list):
     data = data[0]
 now = __import__('datetime').datetime.now(__import__('datetime').timezone.utc)
-last_pulse = data.get('last_pulse') or {}
-ts_str = last_pulse.get('timestamp', '')
+ts_str = data.get('last_pulse_at', '')
 if ts_str:
     try:
         ts = __import__('datetime').datetime.strptime(ts_str.replace('Z', '+0000'), '%Y-%m-%dT%H:%M:%f%z')
@@ -69,5 +67,6 @@ else:
     data['silence_human'] = 'no pulses recorded'
     data['silence_seconds'] = 0
 data['db_path'] = '$DB_PATH'
+data['last_pulse'] = data.pop('last_pulse_at', None)
 print(json.dumps(data, indent=2))
 " 2>/dev/null || echo '{"error": "Failed to read pulse from database"}'

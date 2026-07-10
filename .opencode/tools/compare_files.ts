@@ -1,5 +1,5 @@
 import { tool } from "@opencode-ai/plugin";
-import path from "path";
+import fs from "fs";
 
 export default tool({
   description: "Compare two files and return structural differences",
@@ -10,11 +10,26 @@ export default tool({
     mode: tool.schema.string().optional().default("unified").describe("Diff mode: unified, word, or summary"),
   },
   async execute(args, context) {
-    const scriptPath = path.join(context.directory, "scripts", "compare_files.sh");
-    let cmd = `bash ${scriptPath} ${JSON.stringify(args.file_a)} ${JSON.stringify(args.file_b)}`;
-    if (args.context_lines !== 3) cmd += ` --context ${args.context_lines}`;
-    if (args.mode !== "unified") cmd += ` --mode ${args.mode}`;
-    const result = await Bun.$`${cmd}`.text();
-    return result.trim();
+    if (!fs.existsSync(args.file_a)) return JSON.stringify({ error: `File not found: ${args.file_a}` });
+    if (!fs.existsSync(args.file_b)) return JSON.stringify({ error: `File not found: ${args.file_b}` });
+
+    const result = await Bun.$`diff -u ${args.file_a} ${args.file_b}`.text();
+    // diff exits 0 if identical, non-zero if different
+    if (result === "") {
+      return JSON.stringify({ identical: true, hunks: 0, additions: 0, deletions: 0, summary: "Files are identical" });
+    }
+
+    const lines = result.split("\n");
+    const hunks = lines.filter(l => l.startsWith("@@")).length;
+    const additions = lines.filter(l => l.startsWith("+")).length - 1; // remove header
+    const deletions = lines.filter(l => l.startsWith("-")).length - 1;
+    return JSON.stringify({
+      identical: false,
+      hunks: Math.max(0, hunks),
+      additions: Math.max(0, additions),
+      deletions: Math.max(0, deletions),
+      summary: `${Math.max(0, hunks)} hunk(s), ${Math.max(0, additions)} addition(s), ${Math.max(0, deletions)} deletion(s)`,
+      diff: result,
+    });
   },
 });

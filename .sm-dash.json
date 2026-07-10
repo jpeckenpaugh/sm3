@@ -1,8 +1,8 @@
 {
   "databases": [
     {
-      "name": "EuchreGame Sprint",
-      "path": "/root/sm/test-projects/euchre/euchre.db"
+      "name": "Test 4",
+      "path": "/root/sm/test-projects/test-4/test-4.db"
     }
   ]
 }

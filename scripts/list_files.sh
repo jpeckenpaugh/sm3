@@ -25,7 +25,11 @@ if [ ! -d "$ROOT" ]; then
 fi
 
 cd "$ROOT" || exit 1
+# Try glob path match first, fall back to name-only match for bare filenames
 RESULTS=$(find . -path "./$PATTERN" -type f 2>/dev/null | head -n "$MAX")
+if [ -z "$RESULTS" ]; then
+    RESULTS=$(find . -name "$PATTERN" -type f 2>/dev/null | head -n "$MAX")
+fi
 COUNT=$(echo "$RESULTS" | grep -c .)
 TRUNCATED="false"
 
@@ -46,7 +50,6 @@ while IFS= read -r FILE; do
         echo "    \"$FILE\""
     fi
 done <<< "$RESULTS"
-echo ''
 echo '  ],'
 echo '  "count": '"$COUNT"','
 echo '  "truncated": '"$TRUNCATED"
