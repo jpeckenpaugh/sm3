@@ -78,19 +78,17 @@ def _evaluate_guard(guard: str, ctx: dict) -> bool:
     """Evaluate a simple named guard condition against runtime context.
 
     Supported guards:
-        "" or "true"         → always True
-        "backlog_exists"      → ctx["backlog_file"] has items
-        "backlog_empty"       → ctx["backlog_file"] has no items
+        "" or "true"            → always True (default fallback)
+        "backlog_has_items"      → backlog directory has unprocessed feature files
         "max_iterations_reached" → ctx["iteration"] > ctx["max_iterations"]
-        "tests_passed"        → ctx.get("tests_passed", False)
-        anything else         → False (unknown guard = don't match)
+        "tests_passed"           → ctx.get("tests_passed", False)
+        "gate_passed"            → ctx.get("gate_passed", False)
+        anything else            → False (unknown guard = don't match)
     """
     if not guard or guard == "true":
         return True
-    if guard == "backlog_exists":
+    if guard == "backlog_has_items":
         return has_backlog(ctx.get("backlog_file", "backlog"))
-    if guard == "backlog_empty":
-        return not has_backlog(ctx.get("backlog_file", "backlog"))
     if guard == "max_iterations_reached":
         return ctx.get("iteration", 1) > ctx.get("max_iterations", 10)
     if guard == "tests_passed":

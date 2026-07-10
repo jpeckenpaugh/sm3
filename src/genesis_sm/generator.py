@@ -167,7 +167,7 @@ def permissions_to_yaml(perms, indent=0):
 
     if isinstance(perms, dict):
         for key, value in perms.items():
-            yaml_key = json.dumps(key) if needs_quoting(key) else key
+            yaml_key = "'" + key + "'" if needs_quoting(key) else key
             if isinstance(value, dict):
                 lines.append(f"{prefix}{yaml_key}:")
                 lines.append(permissions_to_yaml(value, indent=indent + 1))

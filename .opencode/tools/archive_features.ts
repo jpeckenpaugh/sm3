@@ -21,7 +21,7 @@ export default tool({
     let archived = 0;
     let notFound = 0;
 
-    const featureFiles = fs.readdirSync(featuresDir).filter(f => f.startsWith("ft-") && f.endsWith(".md"));
+    const featureFiles = fs.readdirSync(featuresDir).filter(f => f.endsWith(".md"));
     for (const fname of featureFiles) {
       const src = path.join(backlogDir, fname);
       if (fs.existsSync(src)) {

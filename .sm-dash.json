@@ -1,8 +1,8 @@
 {
   "databases": [
     {
-      "name": "Test 6",
-      "path": "/root/sm/test-projects/test-6/test-6.db"
+      "name": "Test 2",
+      "path": "/tmp/test-2/test-2.db"
     }
   ]
 }

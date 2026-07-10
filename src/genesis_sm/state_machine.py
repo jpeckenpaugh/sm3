@@ -107,9 +107,10 @@ def has_backlog(backlog_path):
     if not os.path.exists(backlog_path):
         return False
     if os.path.isdir(backlog_path):
-        # Count files in the directory
+        # Count feature files in the directory (ignore subdirs like archive/)
         for entry in os.scandir(backlog_path):
-            return True  # at least one entry exists
+            if entry.is_file():
+                return True  # at least one feature file exists
         return False
     # Plain text file
     with open(backlog_path) as f:

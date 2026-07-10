@@ -59,8 +59,8 @@ def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
         (state_ids["TEST"],             state_ids["LEAD"], "",     0, "TEST → LEAD"),
         (state_ids["LEAD"],             state_ids["REVIEW"], "",     0, "LEAD → REVIEW"),
         (state_ids["REVIEW"],           state_ids["SPRINT_GATE"],  "",     0, "REVIEW → SPRINT_GATE"),
-        (state_ids["SPRINT_GATE"],      state_ids["POPULATE_BACKLOG"], "backlog_exists", 0, "SPRINT_GATE → POPULATE_BACKLOG (backlog non-empty)"),
-        (state_ids["SPRINT_GATE"],      None,                      "backlog_empty",  0, "SPRINT_GATE → (terminal, backlog empty)"),
+        (state_ids["SPRINT_GATE"],      state_ids["POPULATE_BACKLOG"], "backlog_has_items", 0, "features remain → next sprint"),
+        (state_ids["SPRINT_GATE"],      None,                      "",                  0, "no features → ship"),
     ]
 
     for from_id, to_id, guard, priority, desc in transitions:
@@ -83,11 +83,10 @@ def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
 
     contracts = [
         ("POPULATE_BACKLOG", "input",  "concept.md",                     "concept.md",                              "Project concept document", 0),
-        ("POPULATE_BACKLOG", "output", "backlog/ft-*.md",                "backlog/ft-*.md",                         "Backlog feature files", 0),
-        ("SPRINT_PLANNING",  "input",  "backlog/ft-*.md",                "backlog/ft-*.md",                         "Backlog feature files", 0),
-        ("SPRINT_PLANNING",  "output", "sprint/{:03d}/features/ft-*.md", "sprint/{:03d}/features/ft-*.md",          "Selected feature files", 0),
-        ("SPRINT_PLANNING",  "output", "sprint/{:03d}/plan.md",          "sprint/{:03d}/plan.md",                   "Sprint plan document", 0),
-        ("DESIGN",           "input",  "sprint/{:03d}/features/ft-*.md", "sprint/{:03d}/features/ft-*.md",          "Selected feature files", 0),
+        ("POPULATE_BACKLOG", "output", "backlog/feature-*.md",           "backlog/feature-*.md",                    "Backlog feature files", 0),
+        ("SPRINT_PLANNING",  "input",  "backlog/feature-*.md",           "backlog/feature-*.md",                    "Backlog feature files", 0),
+        ("SPRINT_PLANNING",  "output", "sprint/{:03d}/features/*.md",    "sprint/{:03d}/features/*.md",             "Selected feature files", 0),
+        ("DESIGN",           "input",  "sprint/{:03d}/features/*.md",    "sprint/{:03d}/features/*.md",             "Selected feature files", 0),
         ("DESIGN",           "output", "sprint/{:03d}/design.md",        "sprint/{:03d}/design.md",                 "Feature design document", 0),
         ("ARCHITECT",        "input",  "sprint/{:03d}/design.md",   "sprint/{:03d}/design.md",         "Feature design document", 0),
         ("ARCHITECT",        "output", "sprint/{:03d}/spec.md",     "sprint/{:03d}/spec.md",           "Technical specification", 0),
