@@ -3,6 +3,7 @@ setup.py
 src/genesis_sm/__init__.py
 src/genesis_sm/cli.py
 src/genesis_sm/config.json
+src/genesis_sm/generator.py
 src/genesis_sm/schema.sql
 src/genesis_sm/seed.py
 src/genesis_sm/state_machine.py

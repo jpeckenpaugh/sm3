@@ -32,6 +32,16 @@ except ImportError:
 
 import genesis_sm  # top-level package for version
 
+# Agent generation logic — shared with cmd_init via generator module
+from genesis_sm.generator import (
+    deep_merge,
+    safe_json_loads,
+    resolve_inheritance_chain,
+    get_mode_flag,
+    assemble_components,
+    permissions_to_yaml,
+)
+
 # UTC-aware helper for Python 3.8+ (avoids deprecated utcnow())
 _UTC = datetime.timezone.utc
 
@@ -501,143 +511,6 @@ def cmd_status(args):
 
 # ─── Command: generate agent ────────────────────────────────────────────────
 
-def _deep_merge(base, override):
-    """Recursively merge override dict into base. Child values override parent."""
-    for key, value in override.items():
-        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-            _deep_merge(base[key], value)
-        else:
-            base[key] = value
-
-
-def _safe_json_loads(value):
-    """Safely decode a value that may be double-encoded JSON.
-
-    The header/permissions columns in the database may be stored as
-    JSON-encoded strings that themselves contain JSON (double encoding).
-    Recursively decode until we get a dict or list.
-    """
-    if isinstance(value, (dict, list)):
-        return value
-    if isinstance(value, str):
-        try:
-            decoded = json.loads(value)
-            # If the result is still a string, decode again
-            return _safe_json_loads(decoded)
-        except (json.JSONDecodeError, TypeError):
-            return value
-    return value
-
-
-def _resolve_inheritance_chain(conn, profile_name):
-    """Walk the base_profile chain from child to root.
-
-    Returns list of (profile_name, profile_id) from root to child.
-    """
-    chain = []
-    current = profile_name
-    seen = set()
-    while current and current not in seen:
-        seen.add(current)
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, base_profile FROM profiles WHERE name = ?",
-            (current,),
-        )
-        row = cursor.fetchone()
-        if not row:
-            break
-        pid, base = row
-        chain.insert(0, (current, pid))  # root first
-        current = base
-    return chain
-
-
-def _get_mode_flag(conn, profile_name):
-    """Extract the MODE_FLAG for a profile from its header.role.
-
-    The role field follows the pattern: 'the scribe — PLAN mode'
-    -> mode flag is 'PLAN'.  Falls back to pipeline state name,
-    then profile name suffix.
-    """
-    if not profile_name or not conn:
-        return ""
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT header FROM profiles WHERE name = ?", (profile_name,))
-        row = cur.fetchone()
-        if row and row[0]:
-            import json as _j
-            hdr = _j.loads(row[0])
-            role = hdr.get("role", "")
-            # Extract mode from "the X — MODE mode" pattern
-            import re as _re
-            m = _re.search(r'—\s*(.+?)\s+mode', role)
-            if m:
-                return m.group(1).strip()
-        # Fallback: pipeline state name
-        cur.execute("SELECT name FROM pipeline_states WHERE agent_name = ?", (profile_name,))
-        row = cur.fetchone()
-        if row:
-            return row[0]
-    except Exception:
-        pass
-    # Last fallback: profile name suffix
-    return profile_name.split("-", 1)[1] if "-" in profile_name else ""
-
-
-def _assemble_components_for_profiles(conn, chain, profile_name=""):
-    """Collect components across an inheritance chain.
-
-    Walks from root to child, collecting profile_components in order.
-    Child components with the same component_id override parent ones.
-
-    If profile_name has a mode flag (e.g. 'scribe-PLAN' -> 'PLAN'),
-    substitutes <MODE_FLAG> in component content with the actual mode flag.
-
-    Returns list of component content strings in assembly order.
-    """
-    seen_component_ids = set()
-    ordered_components = []  # list of (order_idx, content)
-    mode_flag = _get_mode_flag(conn, profile_name) if profile_name else ""
-
-    for profile_name, profile_id in chain:
-        cursor = conn.cursor()
-        cursor.execute(
-            """SELECT c.id, c.content, pc.order_idx, pc.params
-               FROM profile_components pc
-               JOIN components c ON pc.component_id = c.id
-               WHERE pc.profile_id = ?
-               ORDER BY pc.order_idx""",
-            (profile_id,),
-        )
-        for cid, content, order_idx, params_json in cursor.fetchall():
-            if cid not in seen_component_ids:
-                seen_component_ids.add(cid)
-                # Substitute <MODE_FLAG> with the actual mode flag
-                if mode_flag:
-                    content = content.replace("<MODE_FLAG>", mode_flag)
-                # Apply params: replace {{ key }} with param values
-                if params_json:
-                    import json as _j2
-                    try:
-                        params = _j2.loads(params_json)
-                        # Handle double-encoded JSON
-                        while isinstance(params, str):
-                            params = _j2.loads(params)
-                        if params and isinstance(params, dict):
-                            for key, value in params.items():
-                                content = content.replace("{{ " + key + " }}", str(value))
-                                content = content.replace("{{" + key + "}}", str(value))
-                    except (_j2.JSONDecodeError, TypeError):
-                        pass
-                ordered_components.append((order_idx, content))
-
-    # Sort by order_idx
-    ordered_components.sort(key=lambda x: x[0])
-    return [content for _, content in ordered_components if content]
-
-
 def cmd_generate_agent(args):
     """Render a profile as an OpenCode agent markdown file.
 
@@ -660,12 +533,12 @@ def cmd_generate_agent(args):
             sys.exit(1)
 
         profile_name, version, header_json, permissions_json = row
-        header = _safe_json_loads(header_json)
+        header = safe_json_loads(header_json)
         if not isinstance(header, dict):
             header = {}
 
         # Resolve inheritance chain
-        chain = _resolve_inheritance_chain(conn, args.name)
+        chain = resolve_inheritance_chain(conn, args.name)
 
         # Merge permissions from entire inheritance chain (root to child)
         permissions = {}
@@ -676,10 +549,10 @@ def cmd_generate_agent(args):
             )
             prow = cursor.fetchone()
             if prow and prow[0]:
-                parent_perms = _safe_json_loads(prow[0])
+                parent_perms = safe_json_loads(prow[0])
                 if isinstance(parent_perms, dict):
-                    _deep_merge(permissions, parent_perms)
-        body_parts = _assemble_components_for_profiles(conn, chain, args.name)
+                    deep_merge(permissions, parent_perms)
+        body_parts = assemble_components(conn, chain, args.name)
         assembled_body = "\n\n".join(body_parts)
 
         # 3. Build agent markdown
@@ -687,7 +560,7 @@ def cmd_generate_agent(args):
         mode = header.get("mode", "all")
         temperature = header.get("temperature", 0.1)
 
-        permission_yaml = _permissions_to_yaml(permissions, indent=0)
+        permission_yaml = permissions_to_yaml(permissions, indent=0)
 
         agent_md = f"""---
 description: {description}
@@ -1173,21 +1046,33 @@ def cmd_init(args):
             if not row:
                 continue
             pname, pver, hdr_json, perm_json = row
-            hdr = json.loads(hdr_json)
-            perms = json.loads(perm_json)
-            cursor.execute(
-                """SELECT c.content FROM profile_components pc
-                   JOIN components c ON pc.component_id = c.id
-                   JOIN profiles p ON pc.profile_id = p.id
-                   WHERE p.name = ? ORDER BY pc.order_idx""",
-                (profile_name,),
-            )
-            body_parts = [r[0] for r in cursor.fetchall() if r[0]]
+            hdr = safe_json_loads(hdr_json)
+            perms = safe_json_loads(perm_json)
+
+            # Resolve inheritance chain
+            chain = resolve_inheritance_chain(conn3, profile_name)
+
+            # Merge permissions from entire chain (root to child)
+            merged_perms = {}
+            for chain_name, _ in chain:
+                cursor.execute(
+                    "SELECT permissions FROM profiles WHERE name = ?",
+                    (chain_name,),
+                )
+                prow = cursor.fetchone()
+                if prow and prow[0]:
+                    parent_perms = safe_json_loads(prow[0])
+                    if isinstance(parent_perms, dict):
+                        deep_merge(merged_perms, parent_perms)
+
+            # Assemble components using shared generator
+            body_parts = assemble_components(conn3, chain, profile_name)
             body = "\n\n".join(body_parts)
+
             description = hdr.get("role", profile_name)
             mode = hdr.get("mode", "all")
             temperature = hdr.get("temperature", 0.1)
-            perm_yaml = _permissions_to_yaml(perms, indent=0)
+            perm_yaml = permissions_to_yaml(merged_perms, indent=0)
 
             agent_md = f"""---
 description: {description}
@@ -1347,38 +1232,6 @@ def cmd_projects(args):
         print(f"✓ Project '{args.name}' removed from registry")
 
 
-# ─── YAML helper ─────────────────────────────────────────────────────────────
-
-def _permissions_to_yaml(perms, indent=0):
-    """Convert a permissions dict to YAML-like string without PyYAML.
-
-    Produces properly indented YAML for the permission block.
-    Keys containing special YAML characters (like '*') are quoted.
-    """
-    lines = []
-    prefix = "  " * (indent + 1)
-
-    def needs_quoting(s):
-        """Check if a YAML key needs quoting (contains special chars)."""
-        special = {"*", "?", "&", "!", "|", ">", "[", "]", "{", "}", "%"}
-        return any(c in special for c in s) or ":" in s or "#" in s
-
-    if isinstance(perms, dict):
-        for key, value in perms.items():
-            yaml_key = json.dumps(key) if needs_quoting(key) else key
-            if isinstance(value, dict):
-                lines.append(f"{prefix}{yaml_key}:")
-                lines.append(_permissions_to_yaml(value, indent=indent + 1))
-            elif isinstance(value, str):
-                lines.append(f"{prefix}{yaml_key}: {value}")
-            else:
-                lines.append(f"{prefix}{yaml_key}: {json.dumps(value)}")
-    elif isinstance(perms, str):
-        lines.append(f"{prefix}{perms}")
-
-    return "\n".join(lines)
-
-
 # ─── Profile export / import ─────────────────────────────────────────────────
 
 def cmd_profile_export(args):
@@ -1496,7 +1349,7 @@ def cmd_profile_variant(args):
 
         # 3. Create new profile row
         mode_flag = args.mode
-        base_header = _safe_json_loads(base_header_json)
+        base_header = safe_json_loads(base_header_json)
         if not isinstance(base_header, dict):
             base_header = {}
         new_header = {
@@ -1504,7 +1357,7 @@ def cmd_profile_variant(args):
             "mode": "all",
             "temperature": base_header.get("temperature", 0.1),
         }
-        new_permissions = _safe_json_loads(base_permissions_json)
+        new_permissions = safe_json_loads(base_permissions_json)
         if not isinstance(new_permissions, dict):
             new_permissions = {}
 
