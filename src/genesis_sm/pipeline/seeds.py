@@ -72,6 +72,15 @@ def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
         )
 
     # ── file_contracts ───────────────────────────────────────────────────
+    # Deduplicate before inserting (fixes duplicate rows from pre-Sprint 07 seeds)
+    cursor.execute("""
+        DELETE FROM file_contracts
+        WHERE id NOT IN (
+            SELECT MIN(id) FROM file_contracts
+            GROUP BY state_name, direction, pattern
+        )
+    """)
+
     contracts = [
         ("POPULATE_BACKLOG", "input",  "concept.md",                     "concept.md",                              "Project concept document", 0),
         ("POPULATE_BACKLOG", "output", "backlog/ft-*.md",                "backlog/ft-*.md",                         "Backlog feature files", 0),
@@ -101,7 +110,7 @@ def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
 
     for state_name, direction, pattern, template, desc, optional in contracts:
         cursor.execute(
-            """INSERT OR IGNORE INTO file_contracts
+            """INSERT OR REPLACE INTO file_contracts
                (state_name, direction, pattern, template, description, optional)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (state_name, direction, pattern, template, desc, optional),

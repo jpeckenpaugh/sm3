@@ -11,6 +11,10 @@ permission:
   webfetch: allow
   websearch: allow
   question: allow
+  search_files: allow
+  list_files: allow
+  file_tree: allow
+  read_pulse: allow
 ---
 
 ## Identity

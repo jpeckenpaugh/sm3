@@ -28,6 +28,11 @@ DEFAULT_DB = "matsya.db"
 DEFAULT_SCHEMA = "schema.sql"
 SEED_DIRS = ["profiles", "components", "profile-components"]
 
+# Package-relative seed root: resolves from src/genesis_sm/seed.py
+# up two directories to the project root where profiles/, components/ live.
+_PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
+_DEFAULT_SEED_ROOT = os.path.normpath(os.path.join(_PACKAGE_DIR, "..", ".."))
+
 
 # ─── Database helpers ───────────────────────────────────────────────────────
 
@@ -65,7 +70,6 @@ def ensure_schema(conn, schema_path):
     alter_statements = [
         "ALTER TABLE profiles ADD COLUMN base_profile TEXT REFERENCES profiles(name)",
         "ALTER TABLE pipeline_states ADD COLUMN agent_name TEXT DEFAULT ''",
-        "ALTER TABLE file_contracts ADD COLUMN template TEXT DEFAULT ''",
     ]
     for stmt in alter_statements:
         try:
@@ -283,7 +287,7 @@ def seed_database(db_path=None, schema_path=None, seed_root=None):
     """Run the full seed process. Returns exit code (0 = success)."""
     db_path = get_db_path(db_path)
     schema_path = schema_path or DEFAULT_SCHEMA
-    seed_root = seed_root or "."
+    seed_root = seed_root or _DEFAULT_SEED_ROOT
 
     profiles_dir = os.path.join(seed_root, "profiles")
     components_dir = os.path.join(seed_root, "components")
@@ -296,7 +300,9 @@ def seed_database(db_path=None, schema_path=None, seed_root=None):
     # Check at least one seed directory exists
     seed_dirs_exist = any(os.path.isdir(d) for d in [profiles_dir, components_dir, pc_dir])
     if not seed_dirs_exist:
-        print("  ✗ No seed directories found (profiles/, components/, profile-components/)")
+        print(f"  ✗ No seed directories found in '{seed_root}'")
+        print(f"    Make sure profiles/, components/, profile-components/ exist at that location.")
+        print(f"    Or run with --seed-root <path> pointing to the directory containing them.")
         return 1
 
     conn = sqlite3.connect(db_path)
@@ -338,7 +344,7 @@ def main():
     parser = argparse.ArgumentParser(description="Matsya: Seed data loader")
     parser.add_argument("--db", default=None, help="SQLite database path")
     parser.add_argument("--schema", default=DEFAULT_SCHEMA, help="Schema SQL file path")
-    parser.add_argument("--seed-root", default=".", help="Root directory containing seed data")
+    parser.add_argument("--seed-root", default=_DEFAULT_SEED_ROOT, help="Root directory containing seed data")
     args = parser.parse_args()
 
     exit_code = seed_database(

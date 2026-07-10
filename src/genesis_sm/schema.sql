@@ -80,8 +80,10 @@ CREATE TABLE IF NOT EXISTS file_contracts (
     state_name  TEXT    NOT NULL,
     direction   TEXT    NOT NULL CHECK (direction IN ('input', 'output')),
     pattern     TEXT    NOT NULL,
+    template    TEXT    DEFAULT '',
     description TEXT    DEFAULT '',
-    optional    INTEGER NOT NULL DEFAULT 0
+    optional    INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(state_name, direction, pattern)
 );
 
 CREATE TABLE IF NOT EXISTS phase_events (
@@ -118,8 +120,6 @@ CREATE INDEX IF NOT EXISTS idx_phase_events_sprint
 -- Sprint 04: Agent dispatch
 ALTER TABLE profiles ADD COLUMN base_profile TEXT REFERENCES profiles(name);
 ALTER TABLE pipeline_states ADD COLUMN agent_name TEXT DEFAULT '';
-ALTER TABLE file_contracts ADD COLUMN template TEXT DEFAULT '';
-
 CREATE TABLE IF NOT EXISTS dispatch_log (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     sprint_id      INTEGER NOT NULL REFERENCES sprints(id),

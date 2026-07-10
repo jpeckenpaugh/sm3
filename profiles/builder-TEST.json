@@ -13,7 +13,6 @@
     "edit": {
       "*.py": "allow",
       "*.sh": "allow",
-      "*.json": "allow",
       "*.md": "allow"
     },
     "websearch": "allow",

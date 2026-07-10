@@ -8,12 +8,11 @@
   },
   "permissions": {
     "*": "deny",
-    "read": "allow",
+    "read": { "*": "allow", ".opencode/*": "deny"},
     "edit": {
-      "*.py": "allow",
-      "*.sh": "allow",
-      "*.sql": "allow",
-      "*.md": "allow"
+      "src/**/*": "allow",
+      "requirements.txt": "allow",
+      ".gitignore": "allow"
     },
     "websearch": "allow",
     "webfetch": "deny",

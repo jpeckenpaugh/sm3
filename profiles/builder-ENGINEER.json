@@ -14,9 +14,7 @@
       "*.py": "allow",
       "*.sh": "allow",
       "*.sql": "allow",
-      "*.md": "allow",
-      "*.txt": "allow",
-      ".gitignore": "allow"
+      "*.md": "allow"
     },
     "websearch": "allow",
     "webfetch": "deny",

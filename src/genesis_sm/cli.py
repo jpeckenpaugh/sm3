@@ -61,6 +61,11 @@ REGISTRY_FILE = os.environ.get("SM_PROJECTS_PATH") or os.path.join(REGISTRY_DIR,
 # Resolve package root for bundled schema.sql and config.json
 _PKG = importlib_resources.files(genesis_sm)
 
+# Package-relative seed root: resolves from src/genesis_sm/cli.py
+# up two directories to the project root where profiles/, components/ live.
+_PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
+_DEFAULT_SEED_ROOT = os.path.normpath(os.path.join(_PACKAGE_DIR, "..", ".."))
+
 
 def _pkg_path(name: str) -> str:
     """Return the absolute path to a bundled package data file."""
@@ -213,47 +218,12 @@ def cmd_seed(args):
 # ─── Command: run ───────────────────────────────────────────────────────────
 
 def cmd_run(args):
-    """Load a profile, auto-create a sprint, and start the state machine loop."""
+    """Start a pipeline-driven sprint without requiring a profile."""
     db_path = get_db_path(args.db)
     conn = sqlite3.connect(db_path)
     try:
         cursor = conn.cursor()
 
-        # 1. Load profile
-        cursor.execute(
-            "SELECT name, version, header, permissions FROM profiles WHERE name = ?",
-            (args.profile,),
-        )
-        row = cursor.fetchone()
-        if row is None:
-            print(f"✗ Profile '{args.profile}' not found in database.")
-            print("  Run 'sm seed' first, or check the profile name.")
-            sys.exit(1)
-
-        profile_name, version, header_json, permissions_json = row
-        header = json.loads(header_json)
-        permissions = json.loads(permissions_json)
-
-        # 2. Assemble components
-        cursor.execute(
-            """SELECT c.type, c.name, c.content, pc.order_idx, pc.params
-               FROM profile_components pc
-               JOIN components c ON pc.component_id = c.id
-               JOIN profiles p ON pc.profile_id = p.id
-               WHERE p.name = ?
-               ORDER BY pc.order_idx""",
-            (args.profile,),
-        )
-        components = cursor.fetchall()
-
-        # 3. Build assembled body text
-        body_parts = []
-        for comp_type, comp_name, content, order_idx, params_json in components:
-            if content:
-                body_parts.append(content)
-        assembled_body = "\n\n".join(body_parts)
-
-        # 4. Auto-create sprint (driven mode)
         # Ensure sprints table exists
         cursor.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='sprints'"
@@ -261,28 +231,28 @@ def cmd_run(args):
         if not cursor.fetchone():
             print("✗ Database schema missing 'sprints' table. Run 'sm seed' to update.")
             sys.exit(1)
+
+        # Auto-create sprint (driven mode)
         cursor.execute("SELECT COALESCE(MAX(number), 0) + 1 FROM sprints")
         next_num = cursor.fetchone()[0]
         now = _now_utc()
         cursor.execute(
             """INSERT INTO sprints (number, mode, status, started_at, notes)
                VALUES (?, 'driven', 'active', ?, ?)""",
-            (next_num, now, f"Auto-created by sm run --profile {profile_name}"),
+            (next_num, now, "Auto-created by sm run (pipeline-driven)"),
         )
         sprint_id = cursor.lastrowid
         conn.commit()
         print(f"  Sprint #{next_num} ({sprint_id}) — driven, active")
         print()
 
-        # 5. Construct config for state machine
+        # Construct config for state machine
         cfg = {}
         config_path = args.config or "config.json"
         if os.path.exists(config_path):
             with open(config_path) as f:
-                file_cfg = json.load(f)
-            cfg.update(file_cfg)
+                cfg.update(json.load(f))
 
-        # CLI args override config.json
         if args.max_iterations is not None:
             cfg["max_iterations"] = args.max_iterations
         if args.max_retries is not None:
@@ -292,34 +262,13 @@ def cmd_run(args):
         if args.target_feature_count:
             cfg["target_feature_count"] = args.target_feature_count
 
-        # Add profile data
-        cfg["profile"] = {
-            "name": profile_name,
-            "version": version,
-            "header": header,
-            "permissions": permissions,
-            "assembled_body": assembled_body,
-        }
-
-        # Add logging config for state machine
         cfg["db_path"] = db_path
         cfg["sprint_id"] = sprint_id
         cfg["sprint_number"] = next_num
 
-        # Set environment variables for phase scripts to consume
-        os.environ["MATSYA_PROFILE"] = profile_name
-        os.environ["MATSYA_HEADER"] = header_json
-        os.environ["MATSYA_PERMISSIONS"] = permissions_json
-        os.environ["MATSYA_BODY"] = assembled_body
-
-        print(f"  Profile: {profile_name} v{version}")
-        print(f"  Role:    {header.get('role', 'unknown')}")
-        print(f"  Mode:    {header.get('mode', 'all')}")
-        print(f"  Temp:    {header.get('temperature', 'N/A')}")
-        print(f"  Components: {len(components)} assembled")
+        print("  Pipeline-driven: agents resolved per state from pipeline_states")
         print()
 
-        # 6. Import and run state machine
         from genesis_sm.state_machine import run_with_config
         run_with_config(cfg)
 
@@ -945,11 +894,24 @@ def cmd_init(args):
 
     # 1. Create directory structure
     os.makedirs(project_root, exist_ok=True)
-    for subdir in ["backlog", "sprint", ".opencode/agents", "scripts"]:
+    for subdir in ["backlog", "sprint", ".opencode/agents", ".opencode/tools", "scripts"]:
         os.makedirs(os.path.join(project_root, subdir), exist_ok=True)
 
     # 1.5. Create boilerplate phase scripts and config
     _create_boilerplate(project_root)
+
+    # 1.6. Copy tool definitions from source project into new project
+    import shutil
+    source_tools_dir = os.path.join(_DEFAULT_SEED_ROOT, ".opencode", "tools")
+    target_tools_dir = os.path.join(project_root, ".opencode", "tools")
+    if os.path.isdir(source_tools_dir):
+        for fname in sorted(os.listdir(source_tools_dir)):
+            if fname.endswith(".ts"):
+                src = os.path.join(source_tools_dir, fname)
+                dst = os.path.join(target_tools_dir, fname)
+                if not os.path.isfile(dst):
+                    shutil.copy2(src, dst)
+                    print(f"  Tool: {fname}")
 
     # 2. Detect existing sprint work (adoption prompts)
     def _detect_sprint(n):
@@ -1426,12 +1388,11 @@ def build_parser():
     # ── seed ──
     p_seed = subparsers.add_parser("seed", help="Populate database from seed files")
     p_seed.add_argument("--schema", default=_pkg_path("schema.sql"), help="Schema SQL file path")
-    p_seed.add_argument("--seed-root", default=".", help="Root directory containing seed data")
+    p_seed.add_argument("--seed-root", default=_DEFAULT_SEED_ROOT, help="Root directory containing seed data")
     p_seed.set_defaults(func=cmd_seed)
 
     # ── run ──
-    p_run = subparsers.add_parser("run", help="Load a profile and start the state machine loop (auto-creates sprint)")
-    p_run.add_argument("--profile", required=True, help="Profile name to load")
+    p_run = subparsers.add_parser("run", help="Start a pipeline-driven sprint (resolves agents per state from database)")
     p_run.add_argument("--config", default=None, help="Config JSON file path")
     p_run.add_argument("--max-iterations", type=int, default=None, help="Override max iterations")
     p_run.add_argument("--max-retries", type=int, default=None, help="Override max retries")
@@ -1444,7 +1405,7 @@ def build_parser():
     p_init.add_argument("db_path", metavar="DB_PATH", help="Database path (e.g. matsya.db)")
     p_init.add_argument("--name", default=None, help="Project name (default: directory basename)")
     p_init.add_argument("--schema", default=_pkg_path("schema.sql"), help="Schema SQL file path")
-    p_init.add_argument("--seed-root", default=".", help="Root directory containing seed data")
+    p_init.add_argument("--seed-root", default=_DEFAULT_SEED_ROOT, help="Root directory containing seed data")
     p_init.add_argument("--yes", "-y", action="store_true", help="Auto-accept adoption prompts")
     p_init.set_defaults(func=cmd_init)
 
