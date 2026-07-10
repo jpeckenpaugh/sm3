@@ -1,0 +1,7 @@
+{
+  "profile": "builder-LEAD",
+  "components": [
+    { "type": "rule", "name": "bootstrap-protocol", "order_idx": 0 },
+    { "type": "prompt", "name": "builder-mode-lead", "order_idx": 1 }
+  ]
+}

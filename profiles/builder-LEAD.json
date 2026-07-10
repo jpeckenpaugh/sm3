@@ -1,0 +1,32 @@
+{
+  "name": "builder-LEAD",
+  "version": "1.0.0",
+  "base_profile": "builder",
+  "header": {
+    "role": "the builder — LEAD mode",
+    "mode": "all",
+    "temperature": 0.25
+  },
+  "permissions": {
+    "*": "deny",
+    "read": "allow",
+    "edit": {
+      "src/*": "allow",
+      "tests/*": "allow",
+      "*.sh": "allow",
+      "*.md": "allow",
+      "requirements.txt": "allow",
+      ".gitignore": "allow",
+      ".escalation/LEAD/*.md": "allow"
+    },
+    "websearch": "allow",
+    "webfetch": "deny",
+    "lint_code": "allow",
+    "run_tests": "allow",
+    "delete_file": "allow",
+    "search_files": "allow",
+    "list_files": "allow",
+    "file_tree": "allow",
+    "compare_files": "allow"
+  }
+}

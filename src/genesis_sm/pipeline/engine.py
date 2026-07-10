@@ -95,6 +95,8 @@ def _evaluate_guard(guard: str, ctx: dict) -> bool:
         return ctx.get("iteration", 1) > ctx.get("max_iterations", 10)
     if guard == "tests_passed":
         return ctx.get("tests_passed", False)
+    if guard == "gate_passed":
+        return ctx.get("gate_passed", False)
     # Unknown guard — do not match
     return False
 
@@ -537,6 +539,21 @@ def run_pipeline(cfg: dict) -> None:
                             status="completed",
                         )
                         print(f"    Response: {len(dispatch_result.response_text)} chars")
+
+                        # ── SPRINT_GATE: read gate decision file ──
+                        if state_name == "SPRINT_GATE" and sprint_number:
+                            gate_file = Path(f"sprint/{sprint_number:03d}/gate-code.md")
+                            if gate_file.exists():
+                                gate_content = gate_file.read_text().strip()
+                                print(f"    Gate decision: {gate_content.split(chr(10))[0]}")
+                                if "GATE:PASS" in gate_content:
+                                    ctx["gate_passed"] = True
+                                elif "GATE:FAIL" in gate_content:
+                                    ctx["gate_passed"] = False
+                                    print(f"  → Gate FAILED — sprint blocked.")
+                                    if sprint_id:
+                                        complete_sprint(conn, sprint_id, status="blocked")
+                                    return
 
                     except Exception as e:
                         log_phase_event(conn, sprint_id, state_name, iteration, 1,

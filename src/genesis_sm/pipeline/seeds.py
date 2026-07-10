@@ -14,11 +14,11 @@ import sqlite3
 
 
 def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
-    """Insert the full pipeline: 9 states, 8 transitions, 20 contracts."""
+    """Insert the full pipeline: 10 states, 10 transitions, 25 contracts."""
     cursor = conn.cursor()
 
     # ── pipeline_states ──────────────────────────────────────────────────
-    # Saraswati's expanded pantheon: 8 states, 3 base profiles, 6 derived agents
+    # Saraswati's expanded pantheon: 10 states, 3 base profiles, 7 derived agents
     states = [
         ("POPULATE_BACKLOG", "Read concept, decompose into backlog features", "scribe-POPULATE_BACKLOG"),
         ("SPRINT_PLANNING",  "Select features for this sprint, write plan",   "scribe-SPRINT_PLANNING"),
@@ -26,6 +26,7 @@ def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
         ("ARCHITECT",        "Write technical specification",               "scribe-ARCHITECT"),
         ("ENGINEER",         "Implement code from specification",           "builder-ENGINEER"),
         ("TEST",             "Build and run tests from spec and code",       "builder-TEST"),
+        ("LEAD",             "Resolve blockers, polish code, create devops", "builder-LEAD"),
         ("REVIEW",           "Read spec, code, test report, write review",  "scribe-REVIEW"),
         ("SPRINT_GATE",      "Check backlog, evaluate gates, decide",       "warden-GATE"),
         ("COMMIT",           "Git commit — script, no agent",               ""),
@@ -55,7 +56,8 @@ def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
         (state_ids["DESIGN"],           state_ids["ARCHITECT"],       "",   0, "DESIGN → ARCHITECT"),
         (state_ids["ARCHITECT"],        state_ids["ENGINEER"],     "",     0, "ARCHITECT → ENGINEER"),
         (state_ids["ENGINEER"],         state_ids["TEST"],   "",     0, "ENGINEER → TEST"),
-        (state_ids["TEST"],             state_ids["REVIEW"], "",     0, "TEST → REVIEW"),
+        (state_ids["TEST"],             state_ids["LEAD"], "",     0, "TEST → LEAD"),
+        (state_ids["LEAD"],             state_ids["REVIEW"], "",     0, "LEAD → REVIEW"),
         (state_ids["REVIEW"],           state_ids["SPRINT_GATE"],  "",     0, "REVIEW → SPRINT_GATE"),
         (state_ids["SPRINT_GATE"],      state_ids["POPULATE_BACKLOG"], "backlog_exists", 0, "SPRINT_GATE → POPULATE_BACKLOG (backlog non-empty)"),
         (state_ids["SPRINT_GATE"],      None,                      "backlog_empty",  0, "SPRINT_GATE → (terminal, backlog empty)"),
@@ -96,12 +98,20 @@ def seed_pipeline_tables(conn: sqlite3.Connection) -> None:
         ("TEST",             "input",  "src/**/*",                  "src/**/*",                         "Source code files", 1),
         ("TEST",             "output", "tests/**/*",                "tests/**/*",                       "Executable test files", 1),
         ("TEST",             "output", "sprint/{:03d}/test-report.md", "sprint/{:03d}/test-report.md", "Test results report", 0),
+        ("LEAD",             "input",  "sprint/{:03d}/spec.md",     "sprint/{:03d}/spec.md",           "Technical specification", 0),
+        ("LEAD",             "input",  "src/**/*",                  "src/**/*",                         "Source code files", 1),
+        ("LEAD",             "input",  "tests/**/*",                "tests/**/*",                       "Test files", 1),
+        ("LEAD",             "input",  "sprint/{:03d}/test-report.md", "sprint/{:03d}/test-report.md", "Test results report", 1),
+        ("LEAD",             "output", "src/**/*",                  "src/**/*",                         "Source code files", 1),
+        ("LEAD",             "output", "install.sh",                "install.sh",                       "Installation script", 0),
+        ("LEAD",             "output", "run.sh",                    "run.sh",                           "Run script", 0),
         ("REVIEW",           "input",  "sprint/{:03d}/spec.md",     "sprint/{:03d}/spec.md",           "Technical specification", 0),
         ("REVIEW",           "input",  "src/**/*",                  "src/**/*",                         "Source code files", 1),
         ("REVIEW",           "input",  "sprint/{:03d}/test-report.md", "sprint/{:03d}/test-report.md", "Test results report from TEST state", 1),
         ("REVIEW",           "output", "sprint/{:03d}/review.md",   "sprint/{:03d}/review.md",         "Sprint review report", 0),
         ("SPRINT_GATE",      "input",  "sprint/{:03d}/review.md",   "sprint/{:03d}/review.md",         "Sprint review report", 1),
         ("SPRINT_GATE",      "input",  "backlog/",                  "backlog/",                         "Backlog directory", 0),
+        ("SPRINT_GATE",      "output", "sprint/{:03d}/gate-code.md","sprint/{:03d}/gate-code.md",       "Gate decision file", 0),
     ]
 
     for state_name, direction, pattern, template, desc, optional in contracts:
