@@ -1,8 +1,8 @@
 {
   "databases": [
     {
-      "name": "Test 2",
-      "path": "/tmp/test-2/test-2.db"
+      "name": "Test 3",
+      "path": "/tmp/test-3/test-3.db"
     }
   ]
 }

@@ -163,18 +163,19 @@ def _verify_contracts(
     sprint_id: int,
     iteration: int,
     attempt: int,
+    sprint_number: int = 0,
 ) -> list[dict]:
     """Verify file contracts for the current state.
 
-    Reads file_contracts rows matching state_name, globs the patterns,
-    logs matches and misses as phase_events. Returns a list of
-    verification results.
+    Reads file_contracts rows matching state_name, resolves {:03d} template
+    placeholders, globs the patterns, logs matches and misses as phase_events.
+    Returns a list of verification results.
 
     Called after the phase script completes. Does not fail the phase
     on missing optional contracts.
     """
     cursor = conn.execute(
-        """SELECT direction, pattern, description, optional
+        """SELECT direction, pattern, template, description, optional
            FROM file_contracts
            WHERE state_name = ?
            ORDER BY direction, id""",
@@ -183,22 +184,24 @@ def _verify_contracts(
     contracts = cursor.fetchall()
 
     results = []
-    for direction, pattern, description, optional in contracts:
-        matched = list(Path(".").glob(pattern))
+    for direction, pattern, template, description, optional in contracts:
+        # Resolve {:03d} template placeholders with sprint number
+        resolved = (template or pattern).replace("{:03d}", f"{sprint_number:03d}") if "{:03d}" in (template or pattern) else (template or pattern)
+        matched = list(Path(".").glob(resolved))
         is_missing = len(matched) == 0
 
         if direction == "output" and is_missing and not optional:
             event_type = "contract_missing"
-            event_data = f"output pattern '{pattern}' ({description})"
+            event_data = f"output pattern '{resolved}' ({description})"
             log_phase_event(conn, sprint_id, state_name, iteration, attempt,
                             event_type, event_data)
-            results.append({"pattern": pattern, "status": "missing", "optional": False})
+            results.append({"pattern": resolved, "status": "missing", "optional": False})
         else:
             event_type = "contract_check"
-            event_data = f"{direction} {pattern}: {len(matched)} file(s)"
+            event_data = f"{direction} {resolved}: {len(matched)} file(s)"
             log_phase_event(conn, sprint_id, state_name, iteration, attempt,
                             event_type, event_data)
-            results.append({"pattern": pattern, "status": "ok", "count": len(matched)})
+            results.append({"pattern": resolved, "status": "ok", "count": len(matched)})
 
     return results
 
@@ -302,7 +305,7 @@ def _post_phase(
     if state_name != "GATE":
         try:
             contract_results = _verify_contracts(
-                conn, state_name, sprint_id, iteration, attempt
+                conn, state_name, sprint_id, iteration, attempt, sprint_number
             )
             if sprint_number:
                 _write_contract_manifest(
