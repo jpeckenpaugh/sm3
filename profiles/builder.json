@@ -23,6 +23,8 @@
     "file_tree": "allow",
     "compare_files": "allow",
     "lint_code": "allow",
-    "read_pulse": "allow"
+    "read_pulse": "allow",
+    "delete_file": "allow",
+    "run_tests": "allow"
   }
 }

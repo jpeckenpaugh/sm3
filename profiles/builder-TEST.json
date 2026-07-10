@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "base_profile": "builder",
   "header": {
-    "role": "the builder — TEST_BUILD mode",
+    "role": "the builder — TEST mode",
     "mode": "all",
     "temperature": 0.2
   },
@@ -11,9 +11,9 @@
     "*": "deny",
     "read": "allow",
     "edit": {
-      "*.py": "allow",
-      "*.sh": "allow",
-      "*.md": "allow"
+      "tests/*": "allow",
+      "sprint/*.md": "allow",
+      ".escalation/TEST/*.md": "allow"
     },
     "websearch": "allow",
     "webfetch": "deny",

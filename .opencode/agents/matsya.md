@@ -24,6 +24,7 @@ permission:
   lint_code: allow
   read_pulse: allow
   delete_file: allow
+  run_tests: allow
 ---
 ## Identity
 
